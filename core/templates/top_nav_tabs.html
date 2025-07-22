@@ -1,0 +1,101 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+    <div class="container-fluid">
+        <ul class="nav nav-tabs" id="tabbedNavbar">
+            <!-- Tabs will be dynamically inserted here by JS -->
+        </ul>
+    </div>
+</nav>
+<script>
+// Tabbed navbar logic with localStorage persistence
+const tabKey = 'pythonpoc_tabs';
+const activeTabKey = 'pythonpoc_active_tab';
+
+function getTabs() {
+    return JSON.parse(localStorage.getItem(tabKey) || '[]');
+}
+function setTabs(tabs) {
+    localStorage.setItem(tabKey, JSON.stringify(tabs));
+}
+function getActiveTab() {
+    return localStorage.getItem(activeTabKey) || '/';
+}
+function setActiveTab(url) {
+    localStorage.setItem(activeTabKey, url);
+}
+
+function renderTabs() {
+    const tabs = getTabs();
+    const active = getActiveTab();
+    const tabList = document.getElementById('tabbedNavbar');
+    tabList.innerHTML = '';
+    tabs.forEach(tab => {
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        const a = document.createElement('a');
+        a.className = 'nav-link' + (tab.url === active ? ' active' : '');
+        a.href = tab.url;
+        a.textContent = tab.title;
+        a.setAttribute('data-tab-url', tab.url);
+        a.onclick = function(e) {
+            e.preventDefault();
+            setActiveTab(tab.url);
+            window.location.href = tab.url;
+        };
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'btn-close ms-2';
+        closeBtn.style.fontSize = '0.8em';
+        closeBtn.onclick = function(e) {
+            e.stopPropagation();
+            removeTab(tab.url);
+        };
+        li.appendChild(a);
+        if (tab.url !== '/') li.appendChild(closeBtn); // Don't allow closing Home
+        tabList.appendChild(li);
+    });
+}
+
+function addTab(title, url) {
+    let tabs = getTabs();
+    if (!tabs.some(tab => tab.url === url)) {
+        tabs.push({title, url});
+        setTabs(tabs);
+    }
+    setActiveTab(url);
+    renderTabs();
+}
+function removeTab(url) {
+    let tabs = getTabs();
+    tabs = tabs.filter(tab => tab.url !== url);
+    setTabs(tabs);
+    // If the closed tab was active, switch to the last tab or Home
+    if (getActiveTab() === url) {
+        const newActive = tabs.length ? tabs[tabs.length-1].url : '/';
+        setActiveTab(newActive);
+        window.location.href = newActive;
+    } else {
+        renderTabs();
+    }
+}
+
+// Listen for sidebar clicks
+function setupSidebarTabClicks() {
+    document.querySelectorAll('[data-menu-url]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const title = this.textContent.trim();
+            const url = this.getAttribute('href');
+            addTab(title, url);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tabs if empty
+    if (!getTabs().length) {
+        setTabs([{title: 'Home', url: '/'}]);
+        setActiveTab('/');
+    }
+    renderTabs();
+    setupSidebarTabClicks();
+});
+</script> 

@@ -37,6 +37,19 @@ def custom_login(request):
             return super().form_valid(form)
     return CustomLoginView.as_view()(request)
 
+def get_user_menus(user):
+    from .models import UserRole, RoleMenu, Menu
+    role_ids = UserRole.objects.filter(user=user).values_list('role_id', flat=True)
+    menu_qs = Menu.objects.filter(
+        id__in=RoleMenu.objects.filter(role_id__in=role_ids).values_list('menu_id', flat=True)
+    ).order_by('order')
+    parents = [m for m in menu_qs if m.parent_id is None and m.url not in ['/', '/about/', '/contact/']]
+    menu_tree = []
+    for parent in parents:
+        children = [c for c in menu_qs if c.parent_id == parent.id]
+        menu_tree.append({'menu': parent, 'children': children})
+    return menu_tree
+
 @login_required
 def profile(request):
     if request.method == 'POST':
@@ -58,14 +71,17 @@ def profile(request):
 @login_required
 def home(request):
     form = ProfileUpdateForm(instance=request.user)
-    return render(request, 'home.html', {'user': request.user, 'form': form})
+    menu_tree = get_user_menus(request.user)
+    return render(request, 'home.html', {'user': request.user, 'form': form, 'menu_tree': menu_tree})
 
 @login_required
 def about(request):
     form = ProfileUpdateForm(instance=request.user)
-    return render(request, 'about.html', {'user': request.user, 'form': form})
+    menu_tree = get_user_menus(request.user)
+    return render(request, 'about.html', {'user': request.user, 'form': form, 'menu_tree': menu_tree})
 
 @login_required
 def contact(request):
     form = ProfileUpdateForm(instance=request.user)
-    return render(request, 'contact.html', {'user': request.user, 'form': form})
+    menu_tree = get_user_menus(request.user)
+    return render(request, 'contact.html', {'user': request.user, 'form': form, 'menu_tree': menu_tree})
