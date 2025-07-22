@@ -1,0 +1,25 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - PythonPOC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'core/css/auth.css' %}" rel="stylesheet">
+</head>
+<body>
+{% include 'navbar.html' %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <h1 class="fw-bold mb-4">About PythonPOC</h1>
+            <p class="lead">PythonPOC is a modern, dynamic web application built with Django, designed to showcase best practices in authentication, user experience, and responsive design. This project is a proof of concept for rapid, beautiful web development.</p>
+            <hr class="my-4">
+            <h4 class="mb-3">Our Team</h4>
+            <p>Developed by a passionate team of Python and Django enthusiasts, dedicated to delivering robust and user-friendly web solutions.</p>
+        </div>
+    </div>
+</div>
+</body>
+</html> 

@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from .forms import CustomUserCreationForm, EmailAuthenticationForm
+from .forms import CustomUserCreationForm, EmailAuthenticationForm, ProfileUpdateForm
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
@@ -39,6 +39,33 @@ def custom_login(request):
 
 @login_required
 def profile(request):
-    return render(request, 'profile.html', {
-        'user': request.user,
-    })
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            user = form.save(commit=False)
+            password = form.cleaned_data.get('password')
+            if password:
+                user.set_password(password)
+            user.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('home')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ProfileUpdateForm(instance=request.user)
+    return render(request, 'profile.html', {'form': form, 'user': request.user})
+
+@login_required
+def home(request):
+    form = ProfileUpdateForm(instance=request.user)
+    return render(request, 'home.html', {'user': request.user, 'form': form})
+
+@login_required
+def about(request):
+    form = ProfileUpdateForm(instance=request.user)
+    return render(request, 'about.html', {'user': request.user, 'form': form})
+
+@login_required
+def contact(request):
+    form = ProfileUpdateForm(instance=request.user)
+    return render(request, 'contact.html', {'user': request.user, 'form': form})
