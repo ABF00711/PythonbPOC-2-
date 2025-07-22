@@ -62,8 +62,10 @@ def home(request):
 
 @login_required
 def about(request):
-    return render(request, 'about.html', {'user': request.user})
+    form = ProfileUpdateForm(instance=request.user)
+    return render(request, 'about.html', {'user': request.user, 'form': form})
 
 @login_required
 def contact(request):
-    return render(request, 'contact.html', {'user': request.user})
+    form = ProfileUpdateForm(instance=request.user)
+    return render(request, 'contact.html', {'user': request.user, 'form': form})
