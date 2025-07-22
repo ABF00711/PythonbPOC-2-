@@ -17,12 +17,20 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
-from core.views import register, custom_login, profile
+from core.views import register, custom_login, profile, home, about, contact
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
+    path('', home, name='home'),
+    path('about/', about, name='about'),
+    path('contact/', contact, name='contact'),
     path('admin/', admin.site.urls),
     path('login/', custom_login, name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('register/', register, name='register'),
     path('profile/', profile, name='profile'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

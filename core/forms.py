@@ -21,4 +21,12 @@ class EmailAuthenticationForm(AuthenticationForm):
                 self.cleaned_data['username'] = user.username
             except CustomUser.DoesNotExist:
                 pass
-        return super().clean() 
+        return super().clean()
+
+class ProfileUpdateForm(forms.ModelForm):
+    password = forms.CharField(label='New password', required=False, widget=forms.PasswordInput)
+    avatar = forms.ImageField(label='Avatar', required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = ('username', 'email', 'avatar') 
