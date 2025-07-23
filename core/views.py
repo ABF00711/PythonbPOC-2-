@@ -100,7 +100,8 @@ def dynamic_grid(request, form_name):
     form_cursor.execute("SELECT * FROM forms WHERE FormName = %s", [form_name])
     form_row = form_cursor.fetchone()
     if not form_row:
-        return render(request, 'dynamic_grid.html', {'error': 'Form not found.'})
+        menu_tree = get_user_menus(request.user)
+        return render(request, 'dynamic_grid.html', {'error': 'Form not found.', 'menu_tree': menu_tree})
     select_fields_raw = [f.strip() for f in form_row[2].split(',')]
     table_name = form_row[3]
     # 2. Get column config
@@ -128,9 +129,11 @@ def dynamic_grid(request, form_name):
     for row in raw_data:
         row_dict = dict(zip(sql_fields, row))
         data.append(row_dict)
+    menu_tree = get_user_menus(request.user)
     return render(request, 'dynamic_grid.html', {
         'columns': columns,  # list of (label, field_name) to display
         'data': data,        # list of dicts, field_name -> value
         'form_name': form_name,
         'table_name': table_name,
+        'menu_tree': menu_tree,
     })
