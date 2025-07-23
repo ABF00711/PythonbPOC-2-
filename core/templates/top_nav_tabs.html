@@ -3,6 +3,16 @@
         <ul class="nav nav-tabs" id="tabbedNavbar">
             <!-- Tabs will be dynamically inserted here by JS -->
         </ul>
+        <div class="d-flex align-items-center ms-auto">
+            <span class="me-2 fw-semibold d-none d-md-inline">{{ user.username }}</span>
+            <a href="#" class="d-flex align-items-center text-decoration-none" data-bs-toggle="modal" data-bs-target="#profileModal">
+                {% if user.avatar and user.avatar.name %}
+                    <img src="{{ user.avatar.url }}" alt="Avatar" class="navbar-avatar" style="width:32px;height:32px;object-fit:cover;border-radius:50%;">
+                {% else %}
+                    <img src="https://ui-avatars.com/api/?name={{ user.username|urlencode }}&background=6366f1&color=fff&size=32" alt="Avatar" class="navbar-avatar" style="width:32px;height:32px;object-fit:cover;border-radius:50%;">
+                {% endif %}
+            </a>
+        </div>
     </div>
 </nav>
 <script>

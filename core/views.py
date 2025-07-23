@@ -95,31 +95,36 @@ def dynamic_grid(request, form_name):
     form_row = form_cursor.fetchone()
     if not form_row:
         return render(request, 'dynamic_grid.html', {'error': 'Form not found.'})
-    select_fields = [f.strip() for f in form_row[2].split(',')]
+    select_fields_raw = [f.strip() for f in form_row[2].split(',')]
     table_name = form_row[3]
     # 2. Get column config
     cursor = connection.cursor()
     cursor.execute("SELECT field_label, field_name FROM search_config WHERE table_name = %s", [table_name])
     columns_config = cursor.fetchall()  # list of (field_label, field_name)
-    # Build columns in the order of select_fields, but skip ID for display
+    # Build select_fields and columns in the order of select_fields_raw, using field_name for SQL and field_label for header
+    select_fields = []
     columns = []
-    data_indexes = []
-    for idx, field in enumerate(select_fields):
+    for field in select_fields_raw:
         if field.lower() == 'id':
             continue
         for label, name in columns_config:
             if name == field:
+                select_fields.append(name)
                 columns.append((label, name))
-                data_indexes.append(idx)
                 break
-    # 3. Query data
-    sql = f"SELECT {', '.join(select_fields)} FROM {table_name}"
+    # Always keep ID in the SQL query for backend use
+    sql_fields = [f.strip() for f in form_row[2].split(',')]
+    sql = f"SELECT {', '.join(sql_fields)} FROM {table_name}"
     cursor.execute(sql)
-    data = cursor.fetchall()
+    raw_data = cursor.fetchall()
+    # Build a list of dicts for each row, mapping field_name to value
+    data = []
+    for row in raw_data:
+        row_dict = dict(zip(sql_fields, row))
+        data.append(row_dict)
     return render(request, 'dynamic_grid.html', {
-        'columns': columns,
-        'data': data,
+        'columns': columns,  # list of (label, field_name) to display
+        'data': data,        # list of dicts, field_name -> value
         'form_name': form_name,
         'table_name': table_name,
-        'data_indexes': data_indexes,
     })
