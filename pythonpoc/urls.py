@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from core.views import register, custom_login, profile, home, about, contact, dynamic_grid
+from core.views import api_fields, api_options, api_create
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -30,6 +31,9 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('register/', register, name='register'),
     path('profile/', profile, name='profile'),
+    path('api/fields/<str:table_name>/', api_fields, name='api_fields'),
+    path('api/options/<str:table_name>/<str:field_name>/', api_options, name='api_options'),
+    path('api/create/<str:table_name>/', api_create, name='api_create'),
     path('<str:form_name>/', dynamic_grid, name='dynamic_grid'),
 ]
 

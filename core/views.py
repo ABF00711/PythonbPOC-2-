@@ -10,6 +10,9 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db import connection
 from django.http import JsonResponse
+from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 # Create your views here.
 
@@ -137,3 +140,68 @@ def dynamic_grid(request, form_name):
         'table_name': table_name,
         'menu_tree': menu_tree,
     })
+
+@require_GET
+@login_required
+def api_fields(request, table_name):
+    """Return search_config for a table as JSON."""
+    cursor = connection.cursor()
+    cursor.execute("SELECT field_label, field_name, field_type, lookup_sql, mandatory FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
+    fields = [
+        {
+            'label': row[0],
+            'name': row[1],
+            'type': row[2],
+            'lookup_sql': row[3],
+            'mandatory': row[4],
+        }
+        for row in cursor.fetchall()
+    ]
+    return JsonResponse({'fields': fields})
+
+@require_GET
+@login_required
+def api_options(request, table_name, field_name):
+    """Return dropdown options for a field as JSON, using lookup_sql from search_config."""
+    cursor = connection.cursor()
+    cursor.execute("SELECT lookup_sql FROM search_config WHERE table_name = %s AND field_name = %s", [table_name, field_name])
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return JsonResponse({'options': []})
+    lookup_sql = row[0]
+    cursor.execute(lookup_sql)
+    options = [{'id': r[0], 'text': r[1]} for r in cursor.fetchall()]
+    return JsonResponse({'options': options})
+
+@require_POST
+@csrf_exempt  # We'll handle CSRF in JS later
+@login_required
+def api_create(request, table_name):
+    """Create a new record in table_name. Handles new job creation inline if needed."""
+    data = json.loads(request.body)
+    cursor = connection.cursor()
+    # Get field configs
+    cursor.execute("SELECT field_name, field_type, lookup_sql FROM search_config WHERE table_name = %s", [table_name])
+    fields = cursor.fetchall()
+    field_names = [f[0] for f in fields]
+    values = []
+    for field_name, field_type, lookup_sql in fields:
+        val = data.get(field_name)
+        # Special handling for job field (inputable dropdown)
+        if field_type in ('select', 'autocomplete') and lookup_sql and val:
+            # Check if val is an ID or a new string
+            try:
+                int(val)
+                # Existing ID, use as is
+            except ValueError:
+                # New value, insert into lookup table (assume lookup_sql is like 'SELECT id, name FROM jobs')
+                lookup_table = lookup_sql.split('FROM')[1].split()[0]
+                cursor.execute(f"INSERT INTO {lookup_table} (name) VALUES (%s)", [val])
+                cursor.execute(f"SELECT id FROM {lookup_table} WHERE name = %s", [val])
+                val = cursor.fetchone()[0]
+        values.append(val)
+    # Build insert SQL
+    placeholders = ','.join(['%s'] * len(field_names))
+    sql = f"INSERT INTO {table_name} ({','.join(field_names)}) VALUES ({placeholders})"
+    cursor.execute(sql, values)
+    return JsonResponse({'success': True})
