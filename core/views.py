@@ -9,6 +9,7 @@ from .forms import CustomUserCreationForm, EmailAuthenticationForm, ProfileUpdat
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db import connection
+from django.http import JsonResponse
 
 # Create your views here.
 
@@ -62,12 +63,17 @@ def profile(request):
                 user.set_password(password)
             user.save()
             messages.success(request, 'Profile updated successfully!')
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'Profile updated successfully!'})
             return redirect('home')
         else:
             messages.error(request, 'Please correct the errors below.')
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = ProfileUpdateForm(instance=request.user)
-    return render(request, 'profile.html', {'form': form, 'user': request.user})
+    # Render the modal template for both AJAX and normal requests
+    return render(request, 'profile_modal.html', {'form': form, 'user': request.user})
 
 @login_required
 def home(request):

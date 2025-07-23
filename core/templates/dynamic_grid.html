@@ -1,4 +1,7 @@
+{% extends 'base.html' %}
 {% load static widget_tweaks grid_extras %}
+{% block title %}{{ form_name|title }} - PythonPOC{% endblock %}
+{% block content %}
 {% if error %}
 <div class="alert alert-danger">{{ error }}</div>
 {% else %}
@@ -27,4 +30,5 @@
         </table>
     </div>
 </div>
-{% endif %} 
+{% endif %}
+{% endblock %} 

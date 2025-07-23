@@ -1,0 +1,53 @@
+{% load widget_tweaks %}
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold" id="profileModalLabel">Your Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        {% if user.avatar and user.avatar.name %}
+            <img src="{{ user.avatar.url }}" alt="Avatar" class="modal-profile-avatar">
+        {% else %}
+            <img src="https://ui-avatars.com/api/?name={{ user.username|urlencode }}&background=6366f1&color=fff&size=80" alt="Avatar" class="modal-profile-avatar">
+        {% endif %}
+        <form id="profileForm" method="post" enctype="multipart/form-data" action="{% url 'profile' %}">
+            {% csrf_token %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {{ form.non_field_errors }}
+            <div class="mb-3 position-relative">
+                {% render_field form.username class="form-control" placeholder="Username" %}
+                {% if form.username.errors %}
+                    <div class="text-danger small mt-1">{{ form.username.errors|striptags }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3 position-relative">
+                {% render_field form.email class="form-control" placeholder="Email" %}
+                {% if form.email.errors %}
+                    <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3 position-relative">
+                {% render_field form.password class="form-control" placeholder="New password (leave blank to keep current)" %}
+                {% if form.password.errors %}
+                    <div class="text-danger small mt-1">{{ form.password.errors|striptags }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3 position-relative">
+                {% render_field form.avatar class="form-control" %}
+                {% if form.avatar.errors %}
+                    <div class="text-danger small mt-1">{{ form.avatar.errors|striptags }}</div>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-success w-100 mb-2">Save Changes</button>
+        </form>
+        <a href="{% url 'logout' %}" class="btn btn-outline-secondary w-100">Logout</a>
+      </div>
+    </div>
+  </div>
+</div> 

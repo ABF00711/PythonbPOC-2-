@@ -30,7 +30,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('register/', register, name='register'),
     path('profile/', profile, name='profile'),
-    path('grid/<str:form_name>/', dynamic_grid, name='dynamic_grid'),
+    path('<str:form_name>/', dynamic_grid, name='dynamic_grid'),
 ]
 
 if settings.DEBUG:
