@@ -1,3 +1,4 @@
+{% load static widget_tweaks grid_extras %}
 {% if error %}
 <div class="alert alert-danger">{{ error }}</div>
 {% else %}
@@ -15,8 +16,8 @@
             <tbody>
                 {% for row in data %}
                     <tr>
-                        {% for idx in data_indexes %}
-                            <td>{{ row.idx }}</td>
+                        {% for col in columns %}
+                            <td>{{ row|get_item:col.1 }}</td>
                         {% endfor %}
                     </tr>
                 {% empty %}
