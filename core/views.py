@@ -8,6 +8,7 @@ from django.urls import reverse
 from .forms import CustomUserCreationForm, EmailAuthenticationForm, ProfileUpdateForm
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from django.db import connection
 
 # Create your views here.
 
@@ -85,3 +86,40 @@ def contact(request):
     form = ProfileUpdateForm(instance=request.user)
     menu_tree = get_user_menus(request.user)
     return render(request, 'contact.html', {'user': request.user, 'form': form, 'menu_tree': menu_tree})
+
+@login_required
+def dynamic_grid(request, form_name):
+    # 1. Get form config
+    form_cursor = connection.cursor()
+    form_cursor.execute("SELECT * FROM forms WHERE FormName = %s", [form_name])
+    form_row = form_cursor.fetchone()
+    if not form_row:
+        return render(request, 'dynamic_grid.html', {'error': 'Form not found.'})
+    select_fields = [f.strip() for f in form_row[2].split(',')]
+    table_name = form_row[3]
+    # 2. Get column config
+    cursor = connection.cursor()
+    cursor.execute("SELECT field_label, field_name FROM search_config WHERE table_name = %s", [table_name])
+    columns_config = cursor.fetchall()  # list of (field_label, field_name)
+    # Build columns in the order of select_fields, but skip ID for display
+    columns = []
+    data_indexes = []
+    for idx, field in enumerate(select_fields):
+        if field.lower() == 'id':
+            continue
+        for label, name in columns_config:
+            if name == field:
+                columns.append((label, name))
+                data_indexes.append(idx)
+                break
+    # 3. Query data
+    sql = f"SELECT {', '.join(select_fields)} FROM {table_name}"
+    cursor.execute(sql)
+    data = cursor.fetchall()
+    return render(request, 'dynamic_grid.html', {
+        'columns': columns,
+        'data': data,
+        'form_name': form_name,
+        'table_name': table_name,
+        'data_indexes': data_indexes,
+    })
