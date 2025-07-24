@@ -197,3 +197,24 @@ def api_create(request, table_name):
     sql = f"INSERT INTO {table_name} ({','.join(field_names)}) VALUES ({placeholders})"
     cursor.execute(sql, values)
     return JsonResponse({'success': True})
+
+@require_GET
+@login_required
+def api_record(request, table_name, record_id):
+    """Return a single record as a dict of field_name -> value, using search_config for the field list."""
+    cursor = connection.cursor()
+    # Get field names from search_config
+    cursor.execute("SELECT field_name FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
+    fields = [row[0] for row in cursor.fetchall()]
+    if not fields:
+        return JsonResponse({'error': 'No fields found.'}, status=404)
+    # Always include id for lookup
+    if 'id' not in fields:
+        fields = ['id'] + fields
+    sql = f"SELECT {', '.join(fields)} FROM {table_name} WHERE id = %s"
+    cursor.execute(sql, [record_id])
+    row = cursor.fetchone()
+    if not row:
+        return JsonResponse({'error': 'Record not found.'}, status=404)
+    record = dict(zip(fields, row))
+    return JsonResponse(record)
