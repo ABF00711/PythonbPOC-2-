@@ -1,6 +1,8 @@
 // dynamic_grid.js
 // Handles dynamic create modal, inputable dropdowns, and AJAX grid update
 
+
+
 document.addEventListener('DOMContentLoaded', function() {
     const addBtn = document.getElementById('add-record-btn');
     const modal = new bootstrap.Modal(document.getElementById('createModal'));
@@ -161,23 +163,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (table) {
         table.querySelectorAll('tbody tr').forEach(row => {
             row.addEventListener('dblclick', function() {
-                // Get row data from cells
-                const cells = Array.from(row.querySelectorAll('td'));
-                const rowData = {};
-                fieldConfigs.forEach((f, idx) => {
-                    rowData[f.name] = cells[idx] ? cells[idx].textContent.trim() : '';
-                });
+                const recordId = row.getAttribute('data-record-id');
+                if (!recordId) return;
                 // Fetch field configs if not loaded
-                if (fieldConfigs.length === 0) {
-                    fetch(`/api/fields/${tableName}/`)
+                const fetchFields = fieldConfigs.length === 0
+                    ? fetch(`/api/fields/${tableName}/`).then(res => res.json()).then(data => { fieldConfigs = data.fields; })
+                    : Promise.resolve();
+                fetchFields.then(() => {
+                    // Fetch the full record from backend
+                    fetch(`/api/record/${tableName}/${recordId}/`)
                         .then(res => res.json())
-                        .then(data => {
-                            fieldConfigs = data.fields;
-                            showEditModal(fieldConfigs, rowData);
+                        .then(recordData => {
+                            showEditModal(fieldConfigs, recordData);
                         });
-                } else {
-                    showEditModal(fieldConfigs, rowData);
-                }
+                });
             });
         });
     }
@@ -225,7 +224,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.className = 'form-control';
                 input.id = `edit_field_${field.name}`;
                 input.name = field.name;
-                input.value = rowData[field.name] || '';
+                let val = rowData[field.name] || '';
+                input.value = val;
                 wrapper.appendChild(input);
             } else if (field.type === 'number') {
                 input = document.createElement('input');
@@ -289,8 +289,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }, 300);
+        // Set record id on modal for later use
+        editModal.setAttribute('data-record-id', rowData.id);
         // Show modal
         const editModalInstance = new bootstrap.Modal(editModal);
         editModalInstance.show();
+    }
+
+    // Edit modal form submission
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (form && form.id === 'dynamic-edit-form') {
+            e.preventDefault();
+            const modal = form.closest('.modal');
+            const recordId = modal && modal.getAttribute('data-record-id');
+            if (!recordId) return;
+            // Clear previous errors
+            fieldConfigs.forEach(f => {
+                const err = form.querySelector(`#edit_error_${f.name}`);
+                if (err) err.textContent = '';
+                const input = form.querySelector(`[name="${f.name}"]`);
+                if (input) input.classList.remove('is-invalid');
+            });
+            // Collect form data and validate mandatory fields
+            const formData = {};
+            let firstInvalid = null;
+            let hasError = false;
+            fieldConfigs.forEach(f => {
+                if (f.name.toLowerCase() === 'id') return;
+                const input = form.querySelector(`[name="${f.name}"]`);
+                let val = input ? input.value : '';
+                if (f.mandatory && (!val || val.trim() === '')) {
+                    const err = form.querySelector(`#edit_error_${f.name}`);
+                    if (err) err.textContent = 'This field is required.';
+                    if (input) input.classList.add('is-invalid');
+                    if (!firstInvalid && input) firstInvalid = input;
+                    hasError = true;
+                } else if (input) {
+                    input.classList.remove('is-invalid');
+                }
+                formData[f.name] = val;
+            });
+            if (hasError) {
+                if (firstInvalid) firstInvalid.focus();
+                return;
+            }
+            fetch(`/api/update/${tableName}/${recordId}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(modal).hide();
+                    location.reload();
+                } else if (data.error) {
+                    alert('Error: ' + data.error);
+                }
+            });
+        }
+    }, true);
+
+    // After DOMContentLoaded, update grid display for birthday fields
+    if (window.GRID_COLUMNS && Array.isArray(window.GRID_COLUMNS)) {
+        const birthdayIdx = window.GRID_COLUMNS.findIndex(col => col[1] === 'birthday');
+        if (birthdayIdx !== -1) {
+            document.querySelectorAll('table.table tbody tr').forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells[birthdayIdx]) {
+                    cells[birthdayIdx].textContent = formatDateYMDToMDY(cells[birthdayIdx].textContent.trim());
+                }
+            });
+        }
     }
 }); 

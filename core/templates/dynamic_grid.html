@@ -22,7 +22,7 @@
             </thead>
             <tbody>
                 {% for row in data %}
-                    <tr>
+                    <tr data-record-id="{{ row|get_item:'id' }}">
                         {% for col in columns %}
                             <td>{{ row|get_item:col.1|default_if_none:"" }}</td>
                         {% endfor %}
@@ -34,6 +34,11 @@
         </table>
     </div>
 </div>
+
+{{ columns|json_script:"grid-columns-data" }}
+<script>
+    window.GRID_COLUMNS = JSON.parse(document.getElementById('grid-columns-data').textContent);
+</script>
 
 <!-- Dynamic Create Modal -->
 <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
