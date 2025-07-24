@@ -401,6 +401,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    // Hide the confirmation modal
+                    const modalInstance = bootstrap.Modal.getInstance(bulkDeleteModal);
+                    if (modalInstance) modalInstance.hide();
                     showToast('Records deleted successfully!', 'success');
                     // Remove deleted rows from DOM
                     data.deleted.forEach(id => {
