@@ -21,4 +21,11 @@
 
 #dynamic-form-fields .select2-container {
     width: 100% !important;
+}
+
+.select2-container--open {
+    z-index: 9999 !important;
+}
+.select2-container {
+    z-index: 9999 !important;
 } 

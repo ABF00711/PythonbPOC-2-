@@ -7,10 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const formFieldsDiv = document.getElementById('dynamic-form-fields');
     const form = document.getElementById('dynamic-create-form');
     const tableName = document.querySelector('.container[data-table-name]').dataset.tableName;
-    console.log('tableName for API calls:', tableName);
     let fieldConfigs = [];
 
-    if (addBtn) {
+    if (addBtn) {``
         addBtn.addEventListener('click', function() {
             fetch(`/api/fields/${tableName}/`)
                 .then(res => res.json())
@@ -80,8 +79,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const $select = $(this);
             const field = $select.data('field');
             const table = $select.data('table');
+            // Ensure select is enabled BEFORE initializing Select2
+            $select.prop('disabled', false);
             $select.select2({
-                tags: true,
+                theme: 'bootstrap-5', // Use Bootstrap 5 theme
+                tags: true, // Enable typing new tags
                 width: '100%',
                 ajax: {
                     url: `/api/options/${table}/${field}/`,
@@ -92,6 +94,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 placeholder: 'Select or type to add',
                 allowClear: true,
+                createTag: function (params) { // Allow creating new tags
+                    var term = $.trim(params.term);
+                    if (term === '') { return null; }
+                    return { id: term, text: term, newTag: true };
+                },
+                dropdownParent: $('#createModal') // CRITICAL: ensures Select2 input is not disabled in modal
             });
         });
     }
@@ -111,6 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // If not a number, treat as new entry
                     val = val.trim();
                 }
+                console.log(f.name, val);
                 formData[f.name] = val;
             });
             fetch(`/api/create/${tableName}/`, {

@@ -177,7 +177,7 @@ def api_options(request, table_name, field_name):
 @csrf_exempt  # We'll handle CSRF in JS later
 @login_required
 def api_create(request, table_name):
-    """Create a new record in table_name. Handles new job creation inline if needed."""
+    """Create a new record in table_name. For inputable dropdowns like job, save the name (string) directly, not the ID."""
     data = json.loads(request.body)
     cursor = connection.cursor()
     # Get field configs
@@ -187,18 +187,6 @@ def api_create(request, table_name):
     values = []
     for field_name, field_type, lookup_sql in fields:
         val = data.get(field_name)
-        # Special handling for job field (inputable dropdown)
-        if field_type in ('select', 'autocomplete') and lookup_sql and val:
-            # Check if val is an ID or a new string
-            try:
-                int(val)
-                # Existing ID, use as is
-            except ValueError:
-                # New value, insert into lookup table (assume lookup_sql is like 'SELECT id, name FROM jobs')
-                lookup_table = lookup_sql.split('FROM')[1].split()[0]
-                cursor.execute(f"INSERT INTO {lookup_table} (name) VALUES (%s)", [val])
-                cursor.execute(f"SELECT id FROM {lookup_table} WHERE name = %s", [val])
-                val = cursor.fetchone()[0]
         values.append(val)
     # Build insert SQL
     placeholders = ','.join(['%s'] * len(field_names))
