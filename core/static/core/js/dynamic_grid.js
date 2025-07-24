@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     url: `/api/options/${table}/${field}/`,
                     dataType: 'json',
                     processResults: function(data) {
-                        return { results: data.options };
+                        return { results: data.options.map(function(option) { return { id: option.text, text: option.text }; }) };
                     }
                 },
                 placeholder: 'Select or type to add',
@@ -113,15 +113,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (err) err.textContent = '';
             });
             const formData = {};
+            let firstInvalid = null;
+            let hasError = false;
             fieldConfigs.forEach(f => {
                 let val = form.querySelector(`[name="${f.name}"]`).value;
                 if ((['select', 'autocomplete', 'dropdown'].includes(f.type)) && val && isNaN(val)) {
-                    // If not a number, treat as new entry
                     val = val.trim();
                 }
-                console.log(f.name, val);
+                // Mandatory validation
+                if (f.mandatory && (!val || val.trim() === '')) {
+                    const err = document.getElementById(`error_${f.name}`);
+                    if (err) err.textContent = 'This field is required.';
+                    form.querySelector(`[name="${f.name}"]`).classList.add('is-invalid');
+                    if (!firstInvalid) firstInvalid = form.querySelector(`[name="${f.name}"]`);
+                    hasError = true;
+                } else {
+                    form.querySelector(`[name="${f.name}"]`).classList.remove('is-invalid');
+                }
                 formData[f.name] = val;
             });
+            if (hasError) {
+                if (firstInvalid) firstInvalid.focus();
+                return;
+            }
             fetch(`/api/create/${tableName}/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

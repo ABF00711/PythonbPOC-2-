@@ -6,7 +6,10 @@
 <div class="alert alert-danger">{{ error }}</div>
 {% else %}
 <div class="container py-4" data-table-name="{{ table_name }}">
-    <h2 class="mb-4">{{ form_name|title }} ({{ table_name }})</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">{{ form_name|title }} ({{ table_name }})</h2>
+        <span class="badge bg-secondary fs-5">Total: {{ total_count }}</span>
+    </div>
     <button class="btn btn-primary mb-3" id="add-record-btn">Add</button>
     <div class="table-responsive">
         <table class="table table-bordered table-hover">
@@ -21,7 +24,7 @@
                 {% for row in data %}
                     <tr>
                         {% for col in columns %}
-                            <td>{{ row|get_item:col.1 }}</td>
+                            <td>{{ row|get_item:col.1|default_if_none:"" }}</td>
                         {% endfor %}
                     </tr>
                 {% empty %}

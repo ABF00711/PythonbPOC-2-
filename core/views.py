@@ -132,6 +132,7 @@ def dynamic_grid(request, form_name):
     for row in raw_data:
         row_dict = dict(zip(sql_fields, row))
         data.append(row_dict)
+    total_count = len(data)
     menu_tree = get_user_menus(request.user)
     return render(request, 'dynamic_grid.html', {
         'columns': columns,  # list of (label, field_name) to display
@@ -139,6 +140,7 @@ def dynamic_grid(request, form_name):
         'form_name': form_name,
         'table_name': table_name,
         'menu_tree': menu_tree,
+        'total_count': total_count,
     })
 
 @require_GET
@@ -177,7 +179,7 @@ def api_options(request, table_name, field_name):
 @csrf_exempt  # We'll handle CSRF in JS later
 @login_required
 def api_create(request, table_name):
-    """Create a new record in table_name. For inputable dropdowns like job, save the name (string) directly, not the ID."""
+    """Create a new record in table_name. For inputable dropdowns like job, save the name (string) directly, not the ID. If any field is empty, save as None (NULL)."""
     data = json.loads(request.body)
     cursor = connection.cursor()
     # Get field configs
@@ -187,6 +189,8 @@ def api_create(request, table_name):
     values = []
     for field_name, field_type, lookup_sql in fields:
         val = data.get(field_name)
+        if val == "":
+            val = None
         values.append(val)
     # Build insert SQL
     placeholders = ','.join(['%s'] * len(field_names))
