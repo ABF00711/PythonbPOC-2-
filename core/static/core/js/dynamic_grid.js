@@ -289,10 +289,67 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }, 300);
+        // Set record id on modal for later use
+        editModal.setAttribute('data-record-id', rowData.id);
         // Show modal
         const editModalInstance = new bootstrap.Modal(editModal);
         editModalInstance.show();
     }
+
+    // Edit modal form submission
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (form && form.id === 'dynamic-edit-form') {
+            e.preventDefault();
+            const modal = form.closest('.modal');
+            const recordId = modal && modal.getAttribute('data-record-id');
+            if (!recordId) return;
+            // Clear previous errors
+            fieldConfigs.forEach(f => {
+                const err = form.querySelector(`#edit_error_${f.name}`);
+                if (err) err.textContent = '';
+                const input = form.querySelector(`[name="${f.name}"]`);
+                if (input) input.classList.remove('is-invalid');
+            });
+            // Collect form data and validate mandatory fields
+            const formData = {};
+            let firstInvalid = null;
+            let hasError = false;
+            fieldConfigs.forEach(f => {
+                if (f.name.toLowerCase() === 'id') return;
+                const input = form.querySelector(`[name="${f.name}"]`);
+                let val = input ? input.value : '';
+                if (f.mandatory && (!val || val.trim() === '')) {
+                    const err = form.querySelector(`#edit_error_${f.name}`);
+                    if (err) err.textContent = 'This field is required.';
+                    if (input) input.classList.add('is-invalid');
+                    if (!firstInvalid && input) firstInvalid = input;
+                    hasError = true;
+                } else if (input) {
+                    input.classList.remove('is-invalid');
+                }
+                formData[f.name] = val;
+            });
+            if (hasError) {
+                if (firstInvalid) firstInvalid.focus();
+                return;
+            }
+            fetch(`/api/update/${tableName}/${recordId}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(modal).hide();
+                    location.reload();
+                } else if (data.error) {
+                    alert('Error: ' + data.error);
+                }
+            });
+        }
+    }, true);
 
     // After DOMContentLoaded, update grid display for birthday fields
     if (window.GRID_COLUMNS && Array.isArray(window.GRID_COLUMNS)) {

@@ -218,3 +218,30 @@ def api_record(request, table_name, record_id):
         return JsonResponse({'error': 'Record not found.'}, status=404)
     record = dict(zip(fields, row))
     return JsonResponse(record)
+
+@require_POST
+@csrf_exempt
+@login_required
+def api_update(request, table_name, record_id):
+    """Update a record in table_name by ID. Only updates fields defined in search_config."""
+    data = json.loads(request.body)
+    cursor = connection.cursor()
+    # Get field names from search_config
+    cursor.execute("SELECT field_name FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
+    fields = [row[0] for row in cursor.fetchall()]
+    if not fields:
+        return JsonResponse({'error': 'No fields found.'}, status=404)
+    # Remove 'id' from updatable fields
+    updatable_fields = [f for f in fields if f != 'id']
+    set_clauses = []
+    values = []
+    for field in updatable_fields:
+        if field in data:
+            set_clauses.append(f"{field} = %s")
+            values.append(data[field] if data[field] != '' else None)
+    if not set_clauses:
+        return JsonResponse({'error': 'No fields to update.'}, status=400)
+    values.append(record_id)
+    sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = %s"
+    cursor.execute(sql, values)
+    return JsonResponse({'success': True})

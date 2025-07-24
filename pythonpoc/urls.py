@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from core.views import register, custom_login, profile, home, about, contact, dynamic_grid
-from core.views import api_fields, api_options, api_create, api_record
+from core.views import api_fields, api_options, api_create, api_record, api_update
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/options/<str:table_name>/<str:field_name>/', api_options, name='api_options'),
     path('api/create/<str:table_name>/', api_create, name='api_create'),
     path('api/record/<str:table_name>/<int:record_id>/', api_record, name='api_record'),
+    path('api/update/<str:table_name>/<int:record_id>/', api_update, name='api_update'),
     path('<str:form_name>/', dynamic_grid, name='dynamic_grid'),
 ]
 
