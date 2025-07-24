@@ -345,11 +345,96 @@ document.addEventListener('DOMContentLoaded', function() {
                     bootstrap.Modal.getInstance(modal).hide();
                     location.reload();
                 } else if (data.error) {
-                    alert('Error: ' + data.error);
+                    showToast('Error: ' + data.error, 'error');
                 }
             });
         }
     }, true);
+
+    // Bulk select/deselect logic for grid checkboxes
+    function updateDeleteButtonState() {
+        const anyChecked = document.querySelectorAll('.row-select-checkbox:checked').length > 0;
+        document.getElementById('delete-selected-btn').disabled = !anyChecked;
+    }
+
+    const selectAll = document.getElementById('select-all-checkbox');
+    const deleteBtn = document.getElementById('delete-selected-btn');
+    const bulkDeleteModal = document.getElementById('bulkDeleteModal');
+    const bulkDeleteMsg = document.getElementById('bulk-delete-message');
+    const confirmBulkDeleteBtn = document.getElementById('confirm-bulk-delete-btn');
+
+    if (selectAll && table) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = table.querySelectorAll('.row-select-checkbox');
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateDeleteButtonState();
+        });
+        table.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-select-checkbox')) {
+                const checkboxes = table.querySelectorAll('.row-select-checkbox');
+                const checked = table.querySelectorAll('.row-select-checkbox:checked');
+                selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+                updateDeleteButtonState();
+            }
+        });
+    }
+
+    // Bulk Delete Button click
+    if (deleteBtn && bulkDeleteModal && bulkDeleteMsg && confirmBulkDeleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+            const checked = table.querySelectorAll('.row-select-checkbox:checked');
+            const count = checked.length;
+            bulkDeleteMsg.textContent = `Are you sure you want to permanently delete ${count} selected record${count > 1 ? 's' : ''}?`;
+            const modal = new bootstrap.Modal(bulkDeleteModal);
+            modal.show();
+        });
+
+        confirmBulkDeleteBtn.addEventListener('click', function() {
+            const checked = table.querySelectorAll('.row-select-checkbox:checked');
+            const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-record-id'));
+            if (!ids.length || !tableName) return;
+            fetch(`/api/delete/${tableName}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Records deleted successfully!', 'success');
+                    // Remove deleted rows from DOM
+                    data.deleted.forEach(id => {
+                        const row = table.querySelector(`tr[data-record-id="${id}"]`);
+                        if (row) row.remove();
+                    });
+                    // Update total count badge
+                    const totalBadge = document.querySelector('.badge.bg-secondary.fs-5');
+                    if (totalBadge) {
+                        const current = parseInt(totalBadge.textContent.replace(/\D/g, ''));
+                        const newTotal = Math.max(0, current - data.deleted.length);
+                        totalBadge.textContent = `Total: ${newTotal}`;
+                    }
+                    // If no rows left, show 'No data found'
+                    const tbody = table.querySelector('tbody');
+                    if (tbody && !tbody.querySelector('tr')) {
+                        const colCount = table.querySelectorAll('thead th').length;
+                        const tr = document.createElement('tr');
+                        const td = document.createElement('td');
+                        td.colSpan = colCount;
+                        td.className = 'text-center';
+                        td.textContent = 'No data found.';
+                        tr.appendChild(td);
+                        tbody.appendChild(tr);
+                    }
+                    // Deselect select-all and disable delete button
+                    if (selectAll) selectAll.checked = false;
+                    if (deleteBtn) deleteBtn.disabled = true;
+                } else if (data.error) {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            });
+        });
+    }
 
     // After DOMContentLoaded, update grid display for birthday fields
     if (window.GRID_COLUMNS && Array.isArray(window.GRID_COLUMNS)) {
@@ -362,5 +447,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+    }
+
+    // Toast notification function
+    function showToast(message, type = 'success') {
+        const toastEl = document.getElementById('grid-toast');
+        const toastBody = document.getElementById('grid-toast-body');
+        if (!toastEl || !toastBody) return;
+        toastBody.textContent = message;
+        toastEl.classList.remove('text-bg-success', 'text-bg-danger');
+        toastEl.classList.add(type === 'success' ? 'text-bg-success' : 'text-bg-danger');
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
+        toast.show();
     }
 }); 

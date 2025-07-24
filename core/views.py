@@ -245,3 +245,19 @@ def api_update(request, table_name, record_id):
     sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = %s"
     cursor.execute(sql, values)
     return JsonResponse({'success': True})
+
+@require_POST
+@csrf_exempt
+@login_required
+def api_delete(request, table_name):
+    """Bulk delete records in table_name by list of IDs."""
+    data = json.loads(request.body)
+    ids = data.get('ids', [])
+    if not ids or not isinstance(ids, list):
+        return JsonResponse({'error': 'No IDs provided.'}, status=400)
+    cursor = connection.cursor()
+    # Use parameterized query for safety
+    placeholders = ','.join(['%s'] * len(ids))
+    sql = f"DELETE FROM {table_name} WHERE id IN ({placeholders})"
+    cursor.execute(sql, ids)
+    return JsonResponse({'success': True, 'deleted': ids})

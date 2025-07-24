@@ -11,10 +11,12 @@
         <span class="badge bg-secondary fs-5">Total: {{ total_count }}</span>
     </div>
     <button class="btn btn-primary mb-3" id="add-record-btn">Add</button>
+    <button class="btn btn-danger mb-3 ms-2" id="delete-selected-btn" disabled>Delete Selected</button>
     <div class="table-responsive">
         <table class="table table-bordered table-hover">
             <thead class="table-light">
                 <tr>
+                    <th style="width:40px;"><input type="checkbox" id="select-all-checkbox" title="Select all"></th>
                     {% for col in columns %}
                         <th>{{ col.0 }}</th>
                     {% endfor %}
@@ -23,12 +25,13 @@
             <tbody>
                 {% for row in data %}
                     <tr data-record-id="{{ row|get_item:'id' }}">
+                        <td><input type="checkbox" class="row-select-checkbox"></td>
                         {% for col in columns %}
                             <td>{{ row|get_item:col.1|default_if_none:"" }}</td>
                         {% endfor %}
                     </tr>
                 {% empty %}
-                    <tr><td colspan="{{ columns|length }}" class="text-center">No data found.</td></tr>
+                    <tr><td colspan="{{ columns|length|add:1 }}" class="text-center">No data found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -63,6 +66,25 @@
   </div>
 </div>
 
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bulkDeleteModalLabel">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="bulk-delete-message">Are you sure you want to permanently delete the selected records?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-bulk-delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- jQuery (required for Select2) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- Select2 CSS/JS for inputable dropdowns -->
@@ -72,5 +94,16 @@
 <!-- Dynamic Grid CSS/JS -->
 <link rel="stylesheet" href="{% static 'core/css/dynamic_grid.css' %}">
 <script src="{% static 'core/js/dynamic_grid.js' %}"></script>
+<!-- Bootstrap Toast for notifications -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="grid-toast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+    <div class="d-flex">
+      <div class="toast-body" id="grid-toast-body">
+        <!-- Message will be injected here -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endblock %} 
