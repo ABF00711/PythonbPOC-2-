@@ -10,6 +10,9 @@ from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db import connection
 from django.http import JsonResponse
+from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 # Create your views here.
 
@@ -97,7 +100,7 @@ def contact(request):
 def dynamic_grid(request, form_name):
     # 1. Get form config
     form_cursor = connection.cursor()
-    form_cursor.execute("SELECT * FROM forms WHERE FormName = %s", [form_name])
+    form_cursor.execute("SELECT * FROM forms WHERE tableview = %s", [form_name])
     form_row = form_cursor.fetchone()
     if not form_row:
         menu_tree = get_user_menus(request.user)
@@ -129,6 +132,7 @@ def dynamic_grid(request, form_name):
     for row in raw_data:
         row_dict = dict(zip(sql_fields, row))
         data.append(row_dict)
+    total_count = len(data)
     menu_tree = get_user_menus(request.user)
     return render(request, 'dynamic_grid.html', {
         'columns': columns,  # list of (label, field_name) to display
@@ -136,4 +140,60 @@ def dynamic_grid(request, form_name):
         'form_name': form_name,
         'table_name': table_name,
         'menu_tree': menu_tree,
+        'total_count': total_count,
     })
+
+@require_GET
+@login_required
+def api_fields(request, table_name):
+    """Return search_config for a table as JSON."""
+    cursor = connection.cursor()
+    cursor.execute("SELECT field_label, field_name, field_type, lookup_sql, mandatory FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
+    fields = [
+        {
+            'label': row[0],
+            'name': row[1],
+            'type': row[2],
+            'lookup_sql': row[3],
+            'mandatory': row[4],
+        }
+        for row in cursor.fetchall()
+    ]
+    return JsonResponse({'fields': fields})
+
+@require_GET
+@login_required
+def api_options(request, table_name, field_name):
+    """Return dropdown options for a field as JSON, using lookup_sql from search_config."""
+    cursor = connection.cursor()
+    cursor.execute("SELECT lookup_sql FROM search_config WHERE table_name = %s AND field_name = %s", [table_name, field_name])
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return JsonResponse({'options': []})
+    lookup_sql = row[0]
+    cursor.execute(lookup_sql)
+    options = [{'id': r[0], 'text': r[1]} for r in cursor.fetchall()]
+    return JsonResponse({'options': options})
+
+@require_POST
+@csrf_exempt  # We'll handle CSRF in JS later
+@login_required
+def api_create(request, table_name):
+    """Create a new record in table_name. For inputable dropdowns like job, save the name (string) directly, not the ID. If any field is empty, save as None (NULL)."""
+    data = json.loads(request.body)
+    cursor = connection.cursor()
+    # Get field configs
+    cursor.execute("SELECT field_name, field_type, lookup_sql FROM search_config WHERE table_name = %s", [table_name])
+    fields = cursor.fetchall()
+    field_names = [f[0] for f in fields]
+    values = []
+    for field_name, field_type, lookup_sql in fields:
+        val = data.get(field_name)
+        if val == "":
+            val = None
+        values.append(val)
+    # Build insert SQL
+    placeholders = ','.join(['%s'] * len(field_names))
+    sql = f"INSERT INTO {table_name} ({','.join(field_names)}) VALUES ({placeholders})"
+    cursor.execute(sql, values)
+    return JsonResponse({'success': True})
