@@ -100,7 +100,7 @@ def contact(request):
 def dynamic_grid(request, form_name):
     # 1. Get form config
     form_cursor = connection.cursor()
-    form_cursor.execute("SELECT * FROM forms WHERE FormName = %s", [form_name])
+    form_cursor.execute("SELECT * FROM forms WHERE tableview = %s", [form_name])
     form_row = form_cursor.fetchone()
     if not form_row:
         menu_tree = get_user_menus(request.user)

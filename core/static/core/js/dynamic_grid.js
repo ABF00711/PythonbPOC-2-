@@ -155,4 +155,142 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Add double-click event handler to grid rows for Edit
+    const table = document.querySelector('table.table');
+    if (table) {
+        table.querySelectorAll('tbody tr').forEach(row => {
+            row.addEventListener('dblclick', function() {
+                // Get row data from cells
+                const cells = Array.from(row.querySelectorAll('td'));
+                const rowData = {};
+                fieldConfigs.forEach((f, idx) => {
+                    rowData[f.name] = cells[idx] ? cells[idx].textContent.trim() : '';
+                });
+                // Fetch field configs if not loaded
+                if (fieldConfigs.length === 0) {
+                    fetch(`/api/fields/${tableName}/`)
+                        .then(res => res.json())
+                        .then(data => {
+                            fieldConfigs = data.fields;
+                            showEditModal(fieldConfigs, rowData);
+                        });
+                } else {
+                    showEditModal(fieldConfigs, rowData);
+                }
+            });
+        });
+    }
+
+    // Show Edit modal (dynamically generated)
+    function showEditModal(fields, rowData) {
+        // Clone the create modal and change IDs
+        let editModal = document.getElementById('editModal');
+        if (!editModal) {
+            editModal = document.getElementById('createModal').cloneNode(true);
+            editModal.id = 'editModal';
+            editModal.querySelector('.modal-title').textContent = 'Edit ' + tableName.charAt(0).toUpperCase() + tableName.slice(1);
+            editModal.querySelector('form').id = 'dynamic-edit-form';
+            // Change Save button to Edit
+            const editBtn = editModal.querySelector('button[type="submit"]');
+            editBtn.textContent = 'Edit';
+            // Insert modal into DOM
+            document.body.appendChild(editModal);
+        }
+        // Render fields and pre-fill values
+        const editFormFieldsDiv = editModal.querySelector('#dynamic-form-fields');
+        editFormFieldsDiv.innerHTML = '';
+        fields.forEach(field => {
+            if (field.name.toLowerCase() === 'id') return; // skip ID
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mb-3';
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.htmlFor = `edit_field_${field.name}`;
+            label.innerHTML = field.label + (field.mandatory ? ' <span class="text-danger">*</span>' : '');
+            wrapper.appendChild(label);
+            let input;
+            if (["select", "autocomplete", "dropdown"].includes(field.type)) {
+                input = document.createElement('select');
+                input.className = 'form-control inputable-dropdown';
+                input.id = `edit_field_${field.name}`;
+                input.name = field.name;
+                input.setAttribute('data-lookup', '1');
+                input.setAttribute('data-table', tableName);
+                input.setAttribute('data-field', field.name);
+                wrapper.appendChild(input);
+            } else if (field.type === 'date') {
+                input = document.createElement('input');
+                input.type = 'date';
+                input.className = 'form-control';
+                input.id = `edit_field_${field.name}`;
+                input.name = field.name;
+                input.value = rowData[field.name] || '';
+                wrapper.appendChild(input);
+            } else if (field.type === 'number') {
+                input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'form-control';
+                input.id = `edit_field_${field.name}`;
+                input.name = field.name;
+                input.value = rowData[field.name] || '';
+                wrapper.appendChild(input);
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control';
+                input.id = `edit_field_${field.name}`;
+                input.name = field.name;
+                input.value = rowData[field.name] || '';
+                wrapper.appendChild(input);
+            }
+            // Validation error placeholder
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'invalid-feedback';
+            errorDiv.id = `edit_error_${field.name}`;
+            wrapper.appendChild(errorDiv);
+            editFormFieldsDiv.appendChild(wrapper);
+        });
+        // Initialize Select2 for inputable dropdowns
+        $(editFormFieldsDiv).find('.inputable-dropdown').each(function() {
+            const $select = $(this);
+            const field = $select.data('field');
+            const table = $select.data('table');
+            $select.prop('disabled', false);
+            $select.select2({
+                theme: 'bootstrap-5',
+                tags: true,
+                width: '100%',
+                ajax: {
+                    url: `/api/options/${table}/${field}/`,
+                    dataType: 'json',
+                    processResults: function(data) {
+                        return { results: data.options.map(function(option) { return { id: option.text, text: option.text }; }) };
+                    }
+                },
+                placeholder: 'Select or type to add',
+                allowClear: true,
+                createTag: function (params) {
+                    var term = $.trim(params.term);
+                    if (term === '') { return null; }
+                    return { id: term, text: term, newTag: true };
+                },
+                dropdownParent: $('#editModal')
+            });
+        });
+        // Pre-fill dropdowns after Select2 is initialized
+        setTimeout(() => {
+            fields.forEach(field => {
+                if (["select", "autocomplete", "dropdown"].includes(field.type)) {
+                    const $select = $(editFormFieldsDiv).find(`[name="${field.name}"]`);
+                    if ($select.length && rowData[field.name]) {
+                        $select.append(new Option(rowData[field.name], rowData[field.name], true, true)).trigger('change');
+                    }
+                }
+            });
+        }, 300);
+        // Show modal
+        const editModalInstance = new bootstrap.Modal(editModal);
+        editModalInstance.show();
+    }
 }); 
