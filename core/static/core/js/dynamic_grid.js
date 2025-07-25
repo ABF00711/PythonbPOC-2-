@@ -280,11 +280,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     searchData[fieldName] = { operator, value };
                 }
             });
+
+            // --- Collect sort info ---
+            const sort = [];
+            const sortFields = searchModal.querySelectorAll('.sort-field');
+            const sortDirections = searchModal.querySelectorAll('.sort-direction');
+            for (let i = 0; i < sortFields.length; i++) {
+                const field = sortFields[i].value;
+                const direction = sortDirections[i].value;
+                if (field && direction) {
+                    sort.push({ field, direction });
+                }
+            }
+            // Add sort array to searchData
+            searchData.sort = sort;
+
             const data = await searchRecords(tableName, searchData);
             if (data && data.data) {
                 updateGrid(data.columns, data.data, data.total_count);
                 showToast('Search complete', 'success');
-                attachGridEventHandlers(tableName, fieldConfigs); // Re-attach handlers after search
+                attachGridEventHandlers(tableName, fieldConfigs);
             } else {
                 showToast('No results found', 'warning');
             }

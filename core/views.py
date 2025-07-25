@@ -288,7 +288,7 @@ def api_gsearch(request, table_name, field_name):
 @csrf_exempt
 @login_required
 def api_search(request, table_name):
-    """Return filtered grid data based on search filters."""
+    """Return filtered grid data based on search filters and sort."""
     filters = json.loads(request.body)
     cursor = connection.cursor()
     # Get columns config
@@ -309,6 +309,8 @@ def api_search(request, table_name):
         # Add more mappings as needed
     }
     for field, cond in filters.items():
+        if field == 'sort':
+            continue  # skip sort key
         op = cond.get('operator')
         val = cond.get('value')
         sql_op = operator_map.get(op, op)  # fallback to op if not mapped
@@ -329,7 +331,20 @@ def api_search(request, table_name):
         # Add more operators as needed
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
     select_fields = ['id'] + select_fields
-    sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} ORDER BY id DESC"
+    # --- Handle sort array ---
+    sort = filters.get('sort', [])
+    valid_field_names = set(col[1] for col in columns)
+    order_by_clauses = []
+    if isinstance(sort, list):
+        for s in sort:
+            field = s.get('field')
+            direction = s.get('direction', '').lower()
+            if field in valid_field_names and direction in ('asc', 'desc'):
+                order_by_clauses.append(f"{field} {direction.upper()}")
+    if not order_by_clauses:
+        order_by_clauses = ['id DESC']
+    order_by_sql = 'ORDER BY ' + ', '.join(order_by_clauses)
+    sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} {order_by_sql}"
     print(f"sql: {sql}")
     cursor.execute(sql, params)
     data = [dict(zip(select_fields, row)) for row in cursor.fetchall()]

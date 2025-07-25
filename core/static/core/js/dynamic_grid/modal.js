@@ -309,6 +309,57 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
             }
         }
     });
+    // --- Add Sort Fields Below Filters ---
+    const sortFieldsDiv = document.createElement('div');
+    sortFieldsDiv.id = 'dynamic-sort-fields';
+    // Build options for sort field dropdowns from fields array
+    let sortFieldOptions = '<option value="">Select field</option>';
+    fields.forEach(field => {
+        sortFieldOptions += `<option value="${field.name}">${field.label}</option>`;
+    });
+    // Sort1 row
+    const sort1Row = document.createElement('div');
+    sort1Row.className = 'row mb-3';
+    sort1Row.innerHTML = `
+        <div class="col-md-2">
+            <label class="form-label">Sort1</label>
+        </div>
+        <div class="col-md-5">
+            <select class="form-select sort-field" data-sort-index="1">
+                ${sortFieldOptions}
+            </select>
+        </div>
+        <div class="col-md-5">
+            <select class="form-select sort-direction" data-sort-index="1">
+                <option value="">Select direction</option>
+                <option value="asc">Increase</option>
+                <option value="desc">Decrease</option>
+            </select>
+        </div>
+    `;
+    // Sort2 row
+    const sort2Row = document.createElement('div');
+    sort2Row.className = 'row mb-3';
+    sort2Row.innerHTML = `
+        <div class="col-md-2">
+            <label class="form-label">Sort2</label>
+        </div>
+        <div class="col-md-5">
+            <select class="form-select sort-field" data-sort-index="2">
+                ${sortFieldOptions}
+            </select>
+        </div>
+        <div class="col-md-5">
+            <select class="form-select sort-direction" data-sort-index="2">
+                <option value="">Select direction</option>
+                <option value="asc">Increase</option>
+                <option value="desc">Decrease</option>
+            </select>
+        </div>
+    `;
+    sortFieldsDiv.appendChild(sort1Row);
+    sortFieldsDiv.appendChild(sort2Row);
+    searchFieldsContainer.appendChild(sortFieldsDiv);
 }
 
 window.renderFormFields = renderFormFields;
