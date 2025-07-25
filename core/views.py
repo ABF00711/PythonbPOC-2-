@@ -328,19 +328,13 @@ def api_search(request, table_name):
                 params.extend(val)
         # Add more operators as needed
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+    select_fields = ['id'] + select_fields
     sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} ORDER BY id DESC"
+    print(f"sql: {sql}")
     cursor.execute(sql, params)
     data = [dict(zip(select_fields, row)) for row in cursor.fetchall()]
     # Get total count
     count_sql = f"SELECT COUNT(*) FROM {table_name} {where_sql}"
     cursor.execute(count_sql, params)
     total_count = cursor.fetchone()[0]
-    return render(request, 'dynamic_grid.html', {
-        'columns': columns,  # list of (label, field_name) to display
-        'data': data,        # list of dicts, field_name -> value
-        'form_name': form_name,
-        'table_name': table_name,
-        'menu_tree': menu_tree,
-        'total_count': total_count,
-    })
     return JsonResponse({'columns': columns, 'data': data, 'total_count': total_count})

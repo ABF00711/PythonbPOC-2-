@@ -284,6 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data && data.data) {
                 updateGrid(data.columns, data.data, data.total_count);
                 showToast('Search complete', 'success');
+                attachGridEventHandlers(tableName, fieldConfigs); // Re-attach handlers after search
             } else {
                 showToast('No results found', 'warning');
             }
@@ -306,3 +307,56 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 }); 
+
+// --- Helper to re-attach row and checkbox handlers after grid update ---
+function attachGridEventHandlers(tableName, fieldConfigs) {
+    const table = document.querySelector('table.table');
+    if (!table) return;
+    // Row double-click for Edit
+    table.querySelectorAll('tbody tr').forEach(row => {
+        row.addEventListener('dblclick', function() {
+            const recordId = row.getAttribute('data-record-id');
+            if (!recordId) return;
+            const fetchFields = fieldConfigs.length === 0
+                ? fetch(`/api/fields/${tableName}/`).then(res => res.json()).then(data => { fieldConfigs = data.fields; })
+                : Promise.resolve();
+            fetchFields.then(() => {
+                fetch(`/api/record/${tableName}/${recordId}/`)
+                    .then(res => res.json())
+                    .then(recordData => {
+                        window.showEditModal(fieldConfigs, recordData, tableName);
+                    });
+            });
+        });
+    });
+    // Bulk select/deselect logic for grid checkboxes
+    const selectAll = document.getElementById('select-all-checkbox');
+    const deleteBtn = document.getElementById('delete-selected-btn');
+    function updateDeleteButtonState() {
+        const anyChecked = document.querySelectorAll('.row-select-checkbox:checked').length > 0;
+        if (deleteBtn) deleteBtn.disabled = !anyChecked;
+    }
+    if (selectAll && table) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = table.querySelectorAll('.row-select-checkbox');
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateDeleteButtonState();
+        });
+        table.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-select-checkbox')) {
+                const checkboxes = table.querySelectorAll('.row-select-checkbox');
+                const checked = table.querySelectorAll('.row-select-checkbox:checked');
+                selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+                updateDeleteButtonState();
+            }
+        });
+    }
+}
+// --- Initial attach on page load ---
+//attachGridEventHandlers();
+// After every updateGrid (e.g., after search, after delete), call attachGridEventHandlers();
+// For example, after updateGrid in search:
+// updateGrid(data.columns, data.data, data.total_count);
+// attachGridEventHandlers();
+// ... existing code ...
+// In all places where updateGrid is called, add attachGridEventHandlers() immediately after. 
