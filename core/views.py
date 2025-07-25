@@ -148,14 +148,15 @@ def dynamic_grid(request, form_name):
 def api_fields(request, table_name):
     """Return search_config for a table as JSON."""
     cursor = connection.cursor()
-    cursor.execute("SELECT field_label, field_name, field_type, lookup_sql, mandatory FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
+    cursor.execute("SELECT field_label, field_name, field_type, operator_tags, lookup_sql, mandatory FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
     fields = [
         {
             'label': row[0],
             'name': row[1],
             'type': row[2],
-            'lookup_sql': row[3],
-            'mandatory': row[4],
+            'operator_tags': row[3],
+            'lookup_sql': row[4],
+            'mandatory': row[5],
         }
         for row in cursor.fetchall()
     ]
@@ -261,3 +262,24 @@ def api_delete(request, table_name):
     sql = f"DELETE FROM {table_name} WHERE id IN ({placeholders})"
     cursor.execute(sql, ids)
     return JsonResponse({'success': True, 'deleted': ids})
+
+@require_GET
+@login_required
+def api_gsearch(request, table_name, field_name):
+    print(f"api_gsearch: {table_name}, {field_name}")
+    """Return autocomplete suggestions for GSearch operator as JSON."""
+    q = request.GET.get('q', '').strip()
+    cursor = connection.cursor()
+    # Only allow alphanumeric/underscore field names for safety
+    if not field_name.replace('_', '').isalnum():
+        return JsonResponse({'options': []})
+    # Build SQL
+    sql = f"SELECT DISTINCT {field_name} FROM {table_name}"
+    params = []
+    if q:
+        sql += f" WHERE {field_name} LIKE %s"
+        params.append(f"%{q}%")
+    sql += f" ORDER BY {field_name} LIMIT 20"
+    cursor.execute(sql, params)
+    options = [{'text': row[0]} for row in cursor.fetchall() if row[0] is not None]
+    return JsonResponse({'options': options})

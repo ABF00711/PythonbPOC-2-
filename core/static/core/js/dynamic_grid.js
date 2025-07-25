@@ -439,6 +439,172 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Search Button click
+    const searchBtn = document.getElementById('search-grid-btn');
+    const searchModal = document.getElementById('searchModal');
+    const searchFieldsContainer = document.getElementById('dynamic-search-fields');
+    const resetSearchBtn = document.getElementById('reset-search-btn');
+    const executeSearchBtn = document.getElementById('execute-search-btn');
+
+    if (searchBtn && searchModal) {
+        searchBtn.addEventListener('click', function() {
+            // Fetch search config and generate fields
+            fetch(`/api/fields/${tableName}/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.fields) {
+                        renderSearchFields(data.fields);
+                        const modal = new bootstrap.Modal(searchModal);
+                        modal.show();
+                    }
+                });
+        });
+    }
+
+    function renderSearchFields(fields) {
+        if (!searchFieldsContainer) return;
+        searchFieldsContainer.innerHTML = '';
+        
+        fields.forEach(field => {
+            const fieldRow = document.createElement('div');
+            fieldRow.className = 'row mb-3';
+            fieldRow.innerHTML = `
+                <div class="col-md-3">
+                    <label class="form-label">${field.label}</label>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select operator-select" data-field="${field.name}">
+                        <option value="">Select Operator</option>
+                        ${field.operator_tags ? field.operator_tags.split(',').map(op => 
+                            `<option value="${op.trim()}">${op.trim()}</option>`
+                        ).join('') : ''}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    ${generateSearchInput(field)}
+                </div>
+            `;
+            searchFieldsContainer.appendChild(fieldRow);
+
+            // Populate dropdown options for search fields
+            if (field.type === 'dropdown') {
+                const select = fieldRow.querySelector('.search-input');
+                if (select) {
+                    // Use Select2 for search dropdowns (no tags)
+                    $(select).select2({
+                        theme: 'bootstrap-5',
+                        width: '100%',
+                        dropdownParent: $('#searchModal'),
+                        allowClear: true,
+                        placeholder: `Select ${field.label}`
+                    });
+                    fetch(`/api/options/${tableName}/${field.name}/`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.options) {
+                                data.options.forEach(opt => {
+                                    const option = new Option(opt.text, opt.text, false, false);
+                                    select.appendChild(option);
+                                });
+                                $(select).trigger('change');
+                            }
+                        });
+                }
+            }
+
+            // GSearch autocomplete for text fields
+            if (field.type === 'text') {
+                const operatorSelect = fieldRow.querySelector('.operator-select');
+                const input = fieldRow.querySelector('.search-input');
+                if (operatorSelect && input) {
+                    operatorSelect.addEventListener('change', function() {
+                        if (operatorSelect.value === 'GSearch') {
+                            // Initialize Select2 for autocomplete
+                            $(input).select2({
+                                theme: 'bootstrap-5',
+                                width: '100%',
+                                dropdownParent: $('#searchModal'),
+                                allowClear: true,
+                                placeholder: `Type to search ${field.label}`,
+                                ajax: {
+                                    url: `/api/gsearch/${tableName}/${field.name}/`,
+                                    dataType: 'json',
+                                    delay: 250,
+                                    data: function(params) {
+                                        return { q: params.term };
+                                    },
+                                    processResults: function(data) {
+                                        return { results: data.options.map(function(opt) { return { id: opt.text, text: opt.text }; }) };
+                                    }
+                                },
+                                minimumInputLength: 1
+                            });
+                        } else {
+                            // Destroy Select2 if not GSearch
+                            if ($(input).data('select2')) {
+                                $(input).select2('destroy');
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    function generateSearchInput(field) {
+        switch(field.type) {
+            case 'text':
+                return `<input type="text" class="form-control search-input" data-field="${field.name}" placeholder="Enter ${field.label}">`;
+            case 'number':
+                return `<input type="number" class="form-control search-input" data-field="${field.name}" placeholder="Enter ${field.label}">`;
+            case 'date':
+                return `<input type="date" class="form-control search-input" data-field="${field.name}">`;
+            case 'dropdown':
+                return `<select class="form-select search-input" data-field="${field.name}">
+                    <option value="">Select ${field.label}</option>
+                </select>`;
+            default:
+                return `<input type="text" class="form-control search-input" data-field="${field.name}" placeholder="Enter ${field.label}">`;
+        }
+    }
+
+    // Reset Search Button
+    if (resetSearchBtn) {
+        resetSearchBtn.addEventListener('click', function() {
+            const operatorSelects = searchModal.querySelectorAll('.operator-select');
+            const searchInputs = searchModal.querySelectorAll('.search-input');
+            
+            operatorSelects.forEach(select => select.value = '');
+            searchInputs.forEach(input => input.value = '');
+        });
+    }
+
+    // Execute Search Button
+    if (executeSearchBtn) {
+        executeSearchBtn.addEventListener('click', function() {
+            const searchData = {};
+            const operatorSelects = searchModal.querySelectorAll('.operator-select');
+            const searchInputs = searchModal.querySelectorAll('.search-input');
+            
+            operatorSelects.forEach((select, index) => {
+                const fieldName = select.getAttribute('data-field');
+                const operator = select.value;
+                const value = searchInputs[index] ? searchInputs[index].value : '';
+                
+                if (operator && value) {
+                    searchData[fieldName] = { operator, value };
+                }
+            });
+            
+            // TODO: Send search data to backend and update grid
+            console.log('Search data:', searchData);
+            
+            // Close modal
+            const modalInstance = bootstrap.Modal.getInstance(searchModal);
+            if (modalInstance) modalInstance.hide();
+        });
+    }
+
     // After DOMContentLoaded, update grid display for birthday fields
     if (window.GRID_COLUMNS && Array.isArray(window.GRID_COLUMNS)) {
         const birthdayIdx = window.GRID_COLUMNS.findIndex(col => col[1] === 'birthday');

@@ -86,6 +86,29 @@
   </div>
 </div>
 
+<!-- Dynamic Search Modal -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="searchModalLabel">Search</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="dynamic-search-form">
+          <div id="dynamic-search-fields">
+            <!-- Search fields will be injected here by JS -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="reset-search-btn">Reset</button>
+            <button type="button" class="btn btn-primary" id="execute-search-btn">Search</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- jQuery (required for Select2) -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- Select2 CSS/JS for inputable dropdowns -->
