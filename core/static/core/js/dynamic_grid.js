@@ -515,12 +515,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // GSearch autocomplete for text fields
             if (field.type === 'text') {
                 const operatorSelect = fieldRow.querySelector('.operator-select');
-                const input = fieldRow.querySelector('.search-input');
+                let input = fieldRow.querySelector('.search-input');
                 if (operatorSelect && input) {
                     operatorSelect.addEventListener('change', function() {
+                        const inputCol = fieldRow.querySelector('.col-md-6');
                         if (operatorSelect.value === 'GSearch') {
-                            // Initialize Select2 for autocomplete
-                            $(input).select2({
+                            // Replace input with a select for Select2
+                            const select = document.createElement('select');
+                            select.className = 'form-select search-input';
+                            select.setAttribute('data-field', field.name);
+                            select.setAttribute('style', 'width: 100%');
+                            inputCol.innerHTML = '';
+                            inputCol.appendChild(select);
+                            $(select).select2({
                                 theme: 'bootstrap-5',
                                 width: '100%',
                                 dropdownParent: $('#searchModal'),
@@ -540,10 +547,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 minimumInputLength: 1
                             });
                         } else {
-                            // Destroy Select2 if not GSearch
-                            if ($(input).data('select2')) {
-                                $(input).select2('destroy');
-                            }
+                            // Replace select2 with a normal text input
+                            inputCol.innerHTML = '';
+                            const textInput = document.createElement('input');
+                            textInput.type = 'text';
+                            textInput.className = 'form-control search-input';
+                            textInput.setAttribute('data-field', field.name);
+                            textInput.setAttribute('placeholder', `Enter ${field.label}`);
+                            inputCol.appendChild(textInput);
                         }
                     });
                 }
@@ -585,24 +596,85 @@ document.addEventListener('DOMContentLoaded', function() {
             const searchData = {};
             const operatorSelects = searchModal.querySelectorAll('.operator-select');
             const searchInputs = searchModal.querySelectorAll('.search-input');
-            
+
             operatorSelects.forEach((select, index) => {
                 const fieldName = select.getAttribute('data-field');
                 const operator = select.value;
-                const value = searchInputs[index] ? searchInputs[index].value : '';
-                
+                let value = '';
+                const input = searchInputs[index];
+                if (input) {
+                    if (input.tagName === 'SELECT') {
+                        value = $(input).val();
+                    } else {
+                        value = input.value;
+                    }
+                }
                 if (operator && value) {
                     searchData[fieldName] = { operator, value };
                 }
             });
             
-            // TODO: Send search data to backend and update grid
-            console.log('Search data:', searchData);
-            
+            fetch(`/api/search/${tableName}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(searchData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.data) {
+                    updateGrid(data.columns, data.data, data.total_count);
+                    showToast('Search complete', 'success');
+                } else {
+                    showToast('No results found', 'warning');
+                }
+            })
+            .catch(() => {
+                showToast('Search failed', 'danger');
+            });
             // Close modal
             const modalInstance = bootstrap.Modal.getInstance(searchModal);
             if (modalInstance) modalInstance.hide();
         });
+    }
+
+    function updateGrid(columns, data, totalCount) {
+        // Update table headers
+        const table = document.querySelector('table.table');
+        if (!table) return;
+        const thead = table.querySelector('thead tr');
+        const tbody = table.querySelector('tbody');
+        if (!thead || !tbody) return;
+        // Remove all header cells
+        while (thead.firstChild) thead.removeChild(thead.firstChild);
+        // Add new header cells
+        columns.forEach(col => {
+            if (col[1] !== 'id') {
+                const th = document.createElement('th');
+                th.textContent = col[0];
+                thead.appendChild(th);
+            }
+        });
+        // Remove all body rows
+        while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+        // Add new rows
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-record-id', row.id || '');
+            columns.forEach(col => {
+                if (col[1] !== 'id') {
+                    const td = document.createElement('td');
+                    let value = row[col[1]];
+                    td.textContent = value == null ? '' : value;
+                    tr.appendChild(td);
+                }
+            });
+            tbody.appendChild(tr);
+        });
+        // Update total count
+        const totalCountEl = document.getElementById('total-count');
+        if (totalCountEl) {
+            totalCountEl.textContent = totalCount;
+        }
     }
 
     // After DOMContentLoaded, update grid display for birthday fields

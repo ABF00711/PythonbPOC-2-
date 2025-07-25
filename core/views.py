@@ -283,3 +283,56 @@ def api_gsearch(request, table_name, field_name):
     cursor.execute(sql, params)
     options = [{'text': row[0]} for row in cursor.fetchall() if row[0] is not None]
     return JsonResponse({'options': options})
+
+@require_POST
+@csrf_exempt
+@login_required
+def api_search(request, table_name):
+    """Return filtered grid data based on search filters."""
+    filters = json.loads(request.body)
+    cursor = connection.cursor()
+    # Get columns config
+    cursor.execute("SELECT field_label, field_name, field_type FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
+    columns = [(row[0], row[1], row[2]) for row in cursor.fetchall()]
+    select_fields = [col[1] for col in columns]
+    # Build WHERE clause
+    where_clauses = []
+    params = []
+    operator_map = {
+        'equal': '=',
+        'contains': 'LIKE',
+        'greater': '>',
+        'less': '<',
+        'GSearch': 'LIKE',
+        'not_equal': '!=',
+        'not_contains': 'NOT LIKE',
+        # Add more mappings as needed
+    }
+    for field, cond in filters.items():
+        op = cond.get('operator')
+        val = cond.get('value')
+        sql_op = operator_map.get(op, op)  # fallback to op if not mapped
+        if op in ('contains', 'GSearch'):
+            where_clauses.append(f"{field} {sql_op} %s")
+            params.append(f"%{val}%")
+        elif op == 'not_contains':
+            where_clauses.append(f"{field} {sql_op} %s")
+            params.append(f"%{val}%")
+        elif op in ('equal', 'greater', 'less', 'not_equal'):
+            where_clauses.append(f"{field} {sql_op} %s")
+            params.append(val)
+        elif op == 'IN':
+            if isinstance(val, list):
+                placeholders = ','.join(['%s'] * len(val))
+                where_clauses.append(f"{field} IN ({placeholders})")
+                params.extend(val)
+        # Add more operators as needed
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ''
+    sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} ORDER BY id DESC"
+    cursor.execute(sql, params)
+    data = [dict(zip(select_fields, row)) for row in cursor.fetchall()]
+    # Get total count
+    count_sql = f"SELECT COUNT(*) FROM {table_name} {where_sql}"
+    cursor.execute(count_sql, params)
+    total_count = cursor.fetchone()[0]
+    return JsonResponse({'columns': columns, 'data': data, 'total_count': total_count})
