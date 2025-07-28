@@ -354,14 +354,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await resetGrid(tableName);
                 if (data && data.data) {
                     
-                    // Update grid with original data
-                    updateGrid(data.columns, data.data, data.total_count);
-                    
-                    // Hide reset button
-                    resetGridBtn.style.display = 'none';
-                    
-                    // Re-attach event handlers
-                    attachGridEventHandlers(tableName, fieldConfigs);
+                                    // Update grid with original data
+                updateGrid(data.columns, data.data, data.total_count);
+                
+                // Reset column widths
+                if (window.columnResizer) {
+                    window.columnResizer.resetColumnWidths();
+                }
+                
+                // Hide reset button
+                resetGridBtn.style.display = 'none';
+                
+                // Re-attach event handlers
+                attachGridEventHandlers(tableName, fieldConfigs);
                     
                     showToast('Grid reset to original data', 'success');
                 } else {

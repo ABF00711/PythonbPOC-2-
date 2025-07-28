@@ -14,6 +14,7 @@ export function updateGrid(columns, data, totalCount) {
     // Add checkbox header
     const thCheckbox = document.createElement('th');
     thCheckbox.style.width = '40px';
+    thCheckbox.className = 'no-resize';
     const selectAll = document.createElement('input');
     selectAll.type = 'checkbox';
     selectAll.id = 'select-all-checkbox';
@@ -21,10 +22,21 @@ export function updateGrid(columns, data, totalCount) {
     thCheckbox.appendChild(selectAll);
     thead.appendChild(thCheckbox);
 
-    // Add new header cells
+    // Add new header cells with resizable structure
     columns.forEach(col => {
         const th = document.createElement('th');
-        th.textContent = col[0];
+        th.className = 'resizable-column';
+        th.setAttribute('data-column-name', col[1]);
+        
+        const headerContent = document.createElement('div');
+        headerContent.className = 'header-content';
+        headerContent.textContent = col[0];
+        
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        
+        th.appendChild(headerContent);
+        th.appendChild(resizeHandle);
         thead.appendChild(th);
     });
 
@@ -54,8 +66,14 @@ export function updateGrid(columns, data, totalCount) {
     });
 
     // Update total count
-    const totalCountEl = document.getElementById('total-count');
+    const totalCountEl = document.querySelector('.badge.bg-secondary');
     if (totalCountEl) {
-        totalCountEl.textContent = totalCount;
+        totalCountEl.textContent = `Total: ${totalCount}`;
+    }
+
+    // Reinitialize column resizer after grid update
+    if (window.columnResizer) {
+        window.columnResizer.attachEventListeners();
+        window.columnResizer.loadSavedColumnWidths();
     }
 } 
