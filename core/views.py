@@ -125,13 +125,36 @@ def dynamic_grid(request, form_name):
                 break
     # Always keep ID in the SQL query for backend use
     sql_fields = [f.strip() for f in form_row[2].split(',')]
-    sql = f"SELECT {', '.join(sql_fields)} FROM {table_name}"
+    
+    # Handle job field - join with job table to get job name
+    if 'job' in sql_fields:
+        # Replace job field with job name from join
+        select_fields_with_job = []
+        for field in sql_fields:
+            if field == 'job':
+                select_fields_with_job.append('j.name as job')
+            elif field == 'id':
+                select_fields_with_job.append('t.id')
+            else:
+                select_fields_with_job.append(field)
+        
+        sql = f"SELECT {', '.join(select_fields_with_job)} FROM {table_name} t LEFT JOIN job j ON t.job = j.id"
+    else:
+        sql = f"SELECT {', '.join(sql_fields)} FROM {table_name}"
+    
     cursor.execute(sql)
     raw_data = cursor.fetchall()
     # Build a list of dicts for each row, mapping field_name to value
     data = []
     for row in raw_data:
-        row_dict = dict(zip(sql_fields, row))
+        # Handle the case where we have aliased fields (like j.name as job)
+        row_dict = {}
+        for i, field in enumerate(sql_fields):
+            if field == 'job' and 'j.name as job' in sql:
+                # The job field comes from the alias, so use the alias name
+                row_dict[field] = row[i]
+            else:
+                row_dict[field] = row[i]
         data.append(row_dict)
     total_count = len(data)
     menu_tree = get_user_menus(request.user)
@@ -181,24 +204,56 @@ def api_options(request, table_name, field_name):
 @csrf_exempt  # We'll handle CSRF in JS later
 @login_required
 def api_create(request, table_name):
-    """Create a new record in table_name. For inputable dropdowns like job, save the name (string) directly, not the ID. If any field is empty, save as None (NULL)."""
+    """Create a new record in table_name. For inputable dropdowns like job, check if the job exists and create it if needed."""
     data = json.loads(request.body)
     cursor = connection.cursor()
-    # Get field configs
-    cursor.execute("SELECT field_name, field_type, lookup_sql FROM search_config WHERE table_name = %s", [table_name])
-    fields = cursor.fetchall()
-    field_names = [f[0] for f in fields]
-    values = []
-    for field_name, field_type, lookup_sql in fields:
-        val = data.get(field_name)
-        if val == "":
-            val = None
-        values.append(val)
-    # Build insert SQL
-    placeholders = ','.join(['%s'] * len(field_names))
-    sql = f"INSERT INTO {table_name} ({','.join(field_names)}) VALUES ({placeholders})"
-    cursor.execute(sql, values)
-    return JsonResponse({'success': True})
+    
+    try:
+        # Start transaction
+        cursor.execute("START TRANSACTION")
+        
+        # Handle job field specifically - create new job if it doesn't exist
+        if 'job' in data and data['job']:
+            job_name = data['job'].strip()
+            if job_name:
+                # Check if job exists
+                cursor.execute("SELECT id FROM job WHERE name = %s", [job_name])
+                existing_job = cursor.fetchone()
+                
+                if existing_job:
+                    # Use existing job ID
+                    data['job'] = existing_job[0]
+                else:
+                    # Create new job and use its ID
+                    cursor.execute("INSERT INTO job (name) VALUES (%s)", [job_name])
+                    new_job_id = cursor.lastrowid
+                    data['job'] = new_job_id
+        
+        # Get field configs
+        cursor.execute("SELECT field_name, field_type, lookup_sql FROM search_config WHERE table_name = %s", [table_name])
+        fields = cursor.fetchall()
+        field_names = [f[0] for f in fields]
+        values = []
+        for field_name, field_type, lookup_sql in fields:
+            val = data.get(field_name)
+            if val == "":
+                val = None
+            values.append(val)
+        
+        # Build insert SQL
+        placeholders = ','.join(['%s'] * len(field_names))
+        sql = f"INSERT INTO {table_name} ({','.join(field_names)}) VALUES ({placeholders})"
+        cursor.execute(sql, values)
+        
+        # Commit transaction
+        cursor.execute("COMMIT")
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        # Rollback transaction on error
+        cursor.execute("ROLLBACK")
+        return JsonResponse({'error': str(e)}, status=500)
 
 @require_GET
 @login_required
@@ -213,12 +268,36 @@ def api_record(request, table_name, record_id):
     # Always include id for lookup
     if 'id' not in fields:
         fields = ['id'] + fields
-    sql = f"SELECT {', '.join(fields)} FROM {table_name} WHERE id = %s"
+    
+    # Handle job field - join with job table to get job name
+    if 'job' in fields:
+        # Replace job field with job name from join
+        fields_with_job = []
+        for field in fields:
+            if field == 'job':
+                fields_with_job.append('j.name as job')
+            elif field == 'id':
+                fields_with_job.append('t.id')
+            else:
+                fields_with_job.append(field)
+        
+        sql = f"SELECT {', '.join(fields_with_job)} FROM {table_name} t LEFT JOIN job j ON t.job = j.id WHERE t.id = %s"
+    else:
+        sql = f"SELECT {', '.join(fields)} FROM {table_name} WHERE id = %s"
+    
     cursor.execute(sql, [record_id])
     row = cursor.fetchone()
     if not row:
         return JsonResponse({'error': 'Record not found.'}, status=404)
-    record = dict(zip(fields, row))
+    
+    # Create record dict, handling the job field specially
+    record = {}
+    for i, field in enumerate(fields):
+        if field == 'job':
+            record[field] = row[i]  # This will be the job name from the join
+        else:
+            record[field] = row[i]
+    
     return JsonResponse(record)
 
 @require_POST
@@ -228,25 +307,56 @@ def api_update(request, table_name, record_id):
     """Update a record in table_name by ID. Only updates fields defined in search_config."""
     data = json.loads(request.body)
     cursor = connection.cursor()
-    # Get field names from search_config
-    cursor.execute("SELECT field_name FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
-    fields = [row[0] for row in cursor.fetchall()]
-    if not fields:
-        return JsonResponse({'error': 'No fields found.'}, status=404)
-    # Remove 'id' from updatable fields
-    updatable_fields = [f for f in fields if f != 'id']
-    set_clauses = []
-    values = []
-    for field in updatable_fields:
-        if field in data:
-            set_clauses.append(f"{field} = %s")
-            values.append(data[field] if data[field] != '' else None)
-    if not set_clauses:
-        return JsonResponse({'error': 'No fields to update.'}, status=400)
-    values.append(record_id)
-    sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = %s"
-    cursor.execute(sql, values)
-    return JsonResponse({'success': True})
+    
+    try:
+        # Start transaction
+        cursor.execute("START TRANSACTION")
+        
+        # Handle job field specifically - create new job if it doesn't exist
+        if 'job' in data and data['job']:
+            job_name = data['job'].strip()
+            if job_name:
+                # Check if job exists
+                cursor.execute("SELECT id FROM job WHERE name = %s", [job_name])
+                existing_job = cursor.fetchone()
+                
+                if existing_job:
+                    # Use existing job ID
+                    data['job'] = existing_job[0]
+                else:
+                    # Create new job and use its ID
+                    cursor.execute("INSERT INTO job (name) VALUES (%s)", [job_name])
+                    new_job_id = cursor.lastrowid
+                    data['job'] = new_job_id
+        
+        # Get field names from search_config
+        cursor.execute("SELECT field_name FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
+        fields = [row[0] for row in cursor.fetchall()]
+        if not fields:
+            return JsonResponse({'error': 'No fields found.'}, status=404)
+        # Remove 'id' from updatable fields
+        updatable_fields = [f for f in fields if f != 'id']
+        set_clauses = []
+        values = []
+        for field in updatable_fields:
+            if field in data:
+                set_clauses.append(f"{field} = %s")
+                values.append(data[field] if data[field] != '' else None)
+        if not set_clauses:
+            return JsonResponse({'error': 'No fields to update.'}, status=400)
+        values.append(record_id)
+        sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = %s"
+        cursor.execute(sql, values)
+        
+        # Commit transaction
+        cursor.execute("COMMIT")
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        # Rollback transaction on error
+        cursor.execute("ROLLBACK")
+        return JsonResponse({'error': str(e)}, status=500)
 
 @require_POST
 @csrf_exempt
@@ -345,12 +455,53 @@ def api_search(request, table_name):
     if not order_by_clauses:
         order_by_clauses = ['id DESC']
     order_by_sql = 'ORDER BY ' + ', '.join(order_by_clauses)
-    sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} {order_by_sql}"
+    
+    # Handle job field - join with job table to get job name
+    if 'job' in select_fields:
+        # Replace job field with job name from join
+        select_fields_with_job = []
+        for field in select_fields:
+            if field == 'job':
+                select_fields_with_job.append('j.name as job')
+            elif field == 'id':
+                select_fields_with_job.append('t.id')
+            else:
+                select_fields_with_job.append(field)
+        
+        # Update WHERE clauses to use table alias
+        where_clauses_with_alias = []
+        for clause in where_clauses:
+            # Only replace exact field name matches, not partial matches
+            if clause.startswith('job ') or ' job ' in clause or clause.endswith(' job'):
+                # Replace job field references with table alias
+                clause = clause.replace(' job ', ' j.name ').replace('job ', 'j.name ').replace(' job', ' j.name')
+            where_clauses_with_alias.append(clause)
+        
+        where_sql = f"WHERE {' AND '.join(where_clauses_with_alias)}" if where_clauses_with_alias else ''
+        sql = f"SELECT {', '.join(select_fields_with_job)} FROM {table_name} t LEFT JOIN job j ON t.job = j.id {where_sql} {order_by_sql}"
+    else:
+        sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} {order_by_sql}"
+    
     print(f"sql: {sql}")
     cursor.execute(sql, params)
-    data = [dict(zip(select_fields, row)) for row in cursor.fetchall()]
+    
+    # Handle field mapping correctly when we have aliases
+    data = []
+    for row in cursor.fetchall():
+        row_dict = {}
+        for i, field in enumerate(select_fields):
+            if field == 'job' and 'j.name as job' in sql:
+                # The job field comes from the alias
+                row_dict[field] = row[i]
+            else:
+                row_dict[field] = row[i]
+        data.append(row_dict)
+    
     # Get total count
-    count_sql = f"SELECT COUNT(*) FROM {table_name} {where_sql}"
+    if 'job' in select_fields:
+        count_sql = f"SELECT COUNT(*) FROM {table_name} t LEFT JOIN job j ON t.job = j.id {where_sql}"
+    else:
+        count_sql = f"SELECT COUNT(*) FROM {table_name} {where_sql}"
     cursor.execute(count_sql, params)
     total_count = cursor.fetchone()[0]
     return JsonResponse({'columns': columns, 'data': data, 'total_count': total_count})
@@ -436,3 +587,74 @@ def api_delete_search_pattern(request, table_name):
         return JsonResponse({'success': True, 'deleted': searchname})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@require_GET
+@login_required
+def api_reset_grid(request, table_name):
+    """Reset grid to original data without any filters."""
+    cursor = connection.cursor()
+    
+    # Get form config to determine which fields to select
+    form_cursor = connection.cursor()
+    form_cursor.execute("SELECT * FROM forms WHERE tableview = %s", [table_name])
+    form_row = form_cursor.fetchone()
+    if not form_row:
+        return JsonResponse({'error': 'Form not found.'}, status=404)
+    
+    select_fields_raw = [f.strip() for f in form_row[2].split(',')]
+    
+    # Get column config
+    cursor.execute("SELECT field_label, field_name FROM search_config WHERE table_name = %s", [table_name])
+    columns_config = cursor.fetchall()
+    
+    # Build select_fields and columns
+    select_fields = []
+    columns = []
+    for field in select_fields_raw:
+        if field.lower() == 'id':
+            continue
+        for label, name in columns_config:
+            if name == field:
+                select_fields.append(name)
+                columns.append((label, name))
+                break
+    
+    # Always keep ID in the SQL query
+    sql_fields = [f.strip() for f in form_row[2].split(',')]
+    
+    # Handle job field - join with job table to get job name
+    if 'job' in sql_fields:
+        select_fields_with_job = []
+        for field in sql_fields:
+            if field == 'job':
+                select_fields_with_job.append('j.name as job')
+            elif field == 'id':
+                select_fields_with_job.append('t.id')
+            else:
+                select_fields_with_job.append(field)
+        
+        sql = f"SELECT {', '.join(select_fields_with_job)} FROM {table_name} t LEFT JOIN job j ON t.job = j.id"
+    else:
+        sql = f"SELECT {', '.join(sql_fields)} FROM {table_name}"
+    
+    cursor.execute(sql)
+    raw_data = cursor.fetchall()
+    
+    # Build data list
+    data = []
+    for row in raw_data:
+        row_dict = {}
+        for i, field in enumerate(sql_fields):
+            if field == 'job' and 'j.name as job' in sql:
+                row_dict[field] = row[i]
+            else:
+                row_dict[field] = row[i]
+        data.append(row_dict)
+    
+    total_count = len(data)
+    
+    return JsonResponse({
+        'columns': columns,
+        'data': data,
+        'total_count': total_count
+    })

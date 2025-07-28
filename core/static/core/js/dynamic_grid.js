@@ -1,7 +1,7 @@
 // dynamic_grid.js
 // Main orchestrator for the dynamic grid UI
 import { updateGrid } from './dynamic_grid/grid.js';
-import { createRecord, updateRecord, deleteRecords, searchRecords } from './dynamic_grid/crud.js';
+import { createRecord, updateRecord, deleteRecords, searchRecords, resetGrid } from './dynamic_grid/crud.js';
 import { formatDateYMDToMDY, showToast } from './dynamic_grid/utils.js';
 import { SearchPatternManager } from './dynamic_grid/search_patterns.js';
 
@@ -246,9 +246,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         const modal = new bootstrap.Modal(searchModal);
                         modal.show();
                         
-                        // Initialize search pattern manager after modal is shown
-                        if (!searchPatternManager && tableName) {
-                            searchPatternManager = new SearchPatternManager(tableName);
+                        // Initialize search pattern manager after modal is shown and fields are rendered
+                        if (tableName) {
+                            // Use setTimeout to ensure modal is fully rendered
+                            setTimeout(() => {
+                                if (!searchPatternManager) {
+                                    searchPatternManager = new SearchPatternManager(tableName);
+                                } else {
+                                    // Re-initialize if it already exists to refresh patterns
+                                    searchPatternManager.init();
+                                }
+                            }, 100);
                         }
                     }
                 });
@@ -268,13 +276,9 @@ document.addEventListener('DOMContentLoaded', function() {
             sortFieldSelects.forEach(select => select.value = '');
             sortDirectionSelects.forEach(select => select.value = '');
             
-            // Clear search pattern selection
-            const patternSelect = document.getElementById('search-pattern-select');
-            const patternNameInput = document.getElementById('search-pattern-name');
-            if (patternSelect) patternSelect.value = '';
-            if (patternNameInput) patternNameInput.value = '';
+            // Reset search pattern form using the manager
             if (searchPatternManager) {
-                document.getElementById('delete-pattern-btn').disabled = true;
+                searchPatternManager.resetForm();
             }
         });
     }
@@ -322,12 +326,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateGrid(data.columns, data.data, data.total_count);
                 showToast('Search complete', 'success');
                 attachGridEventHandlers(tableName, fieldConfigs);
+                
+                // Show reset grid button after search
+                const resetGridBtn = document.getElementById('reset-grid-btn');
+                if (resetGridBtn) {
+                    resetGridBtn.style.display = 'inline-block';
+                }
             } else {
                 showToast('No results found', 'warning');
             }
             // Close modal
             const modalInstance = bootstrap.Modal.getInstance(searchModal);
             if (modalInstance) modalInstance.hide();
+        });
+    }
+
+    // Reset Grid Button
+    const resetGridBtn = document.getElementById('reset-grid-btn');
+    if (resetGridBtn) {
+        resetGridBtn.addEventListener('click', async function() {
+            try {
+                // Show loading state
+                resetGridBtn.disabled = true;
+                resetGridBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+                
+                // Fetch original data from the API
+                const data = await resetGrid(tableName);
+                if (data && data.data) {
+                    
+                    // Update grid with original data
+                    updateGrid(data.columns, data.data, data.total_count);
+                    
+                    // Hide reset button
+                    resetGridBtn.style.display = 'none';
+                    
+                    // Re-attach event handlers
+                    attachGridEventHandlers(tableName, fieldConfigs);
+                    
+                    showToast('Grid reset to original data', 'success');
+                } else {
+                    throw new Error('Failed to fetch original data');
+                }
+            } catch (error) {
+                console.error('Error resetting grid:', error);
+                showToast('Error resetting grid. Please refresh the page.', 'error');
+            } finally {
+                // Reset button state
+                resetGridBtn.disabled = false;
+                resetGridBtn.innerHTML = 'Reset Grid';
+            }
         });
     }
 

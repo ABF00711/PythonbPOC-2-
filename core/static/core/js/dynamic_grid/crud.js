@@ -35,4 +35,12 @@ export async function searchRecords(tableName, searchData) {
         body: JSON.stringify(searchData)
     });
     return res.json();
+}
+
+export async function resetGrid(tableName) {
+    const res = await fetch(`/api/reset-grid/${tableName}/`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    return res.json();
 } 

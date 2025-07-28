@@ -6,12 +6,32 @@ export class SearchPatternManager {
         this.tableName = tableName;
         this.patterns = [];
         this.currentPattern = null;
+        this.eventListenersAttached = false;
         this.init();
     }
 
     async init() {
+        // Clear any existing patterns to prevent duplicates
+        this.patterns = [];
+        this.currentPattern = null;
+        
         await this.loadPatterns();
         this.attachEventListeners();
+        this.resetForm();
+    }
+
+    resetForm() {
+        // Reset pattern form fields
+        const patternSelect = document.getElementById('search-pattern-select');
+        const patternNameInput = document.getElementById('search-pattern-name');
+        const deleteBtn = document.getElementById('delete-pattern-btn');
+        
+        if (patternSelect) patternSelect.value = '';
+        if (patternNameInput) patternNameInput.value = '';
+        if (deleteBtn) deleteBtn.disabled = true;
+        
+        // Clear current pattern
+        this.currentPattern = null;
     }
 
     async loadPatterns() {
@@ -44,6 +64,12 @@ export class SearchPatternManager {
     }
 
     attachEventListeners() {
+        // Only attach listeners once
+        if (this.eventListenersAttached) {
+            console.log('Event listeners already attached, skipping');
+            return;
+        }
+
         // Pattern selection
         console.log('attachEventListeners called');
         const patternSelect = document.getElementById('search-pattern-select');
@@ -71,6 +97,8 @@ export class SearchPatternManager {
         } else {
             console.log('Delete button not found');
         }
+
+        this.eventListenersAttached = true;
     }
 
     onPatternSelect(event) {
