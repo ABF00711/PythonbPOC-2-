@@ -76,4 +76,15 @@ export function updateGrid(columns, data, totalCount) {
         window.columnResizer.attachEventListeners();
         window.columnResizer.loadSavedColumnWidths();
     }
+
+    // Reinitialize column dragger after grid update
+    if (window.columnDragger) {
+        window.columnDragger.attachEventListeners();
+        window.columnDragger.applyColumnOrderWithDelay();
+    }
+
+    // Apply column visibility after grid update
+    if (window.columnVisibilityManager) {
+        window.columnVisibilityManager.applyVisibilityAfterGridUpdate();
+    }
 } 

@@ -38,6 +38,11 @@ class ColumnResizer {
     }
 
     startResize(e) {
+        // Prevent resize if we're already dragging
+        if (window.columnDragger && window.columnDragger.isDragging) {
+            return;
+        }
+
         e.preventDefault();
         this.isResizing = true;
         this.currentColumn = e.target.closest('.resizable-column');

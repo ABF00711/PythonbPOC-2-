@@ -35,6 +35,11 @@
     position: relative;
     min-width: 100px;
     user-select: none;
+    cursor: grab;
+}
+
+.resizable-column:active {
+    cursor: grabbing;
 }
 
 .resizable-column .header-content {
@@ -62,6 +67,7 @@
 
 .no-resize {
     user-select: none;
+    cursor: default;
 }
 
 /* Visual feedback during resize */
@@ -85,4 +91,50 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Column Dragging Styles */
+.resizable-column.dragging {
+    opacity: 0.5;
+    background-color: #e9ecef;
+    transform: scale(0.95);
+    transition: all 0.2s ease;
+}
+
+.ghost-column {
+    background-color: #ffffff;
+    border: 2px solid #007bff;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-weight: 500;
+    color: #007bff;
+    transition: all 0.2s ease;
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.drop-zone {
+    transition: all 0.2s ease;
+}
+
+.drop-zone.drop-highlight {
+    background-color: #d4edda;
+    border-color: #28a745;
+    transform: scale(1.02);
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+/* Global dragging state */
+body.dragging {
+    cursor: grabbing;
+}
+
+body.dragging * {
+    cursor: grabbing !important;
+}
+
+/* Prevent text selection during drag */
+.dragging * {
+    user-select: none;
 } 

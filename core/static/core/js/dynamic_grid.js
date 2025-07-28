@@ -362,6 +362,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.columnResizer.resetColumnWidths();
                 }
                 
+                // Reset column order
+                if (window.columnDragger) {
+                    window.columnDragger.resetColumnOrder();
+                }
+                
+                // Reset column visibility
+                if (window.columnVisibilityManager) {
+                    window.columnVisibilityManager.resetVisibleColumns();
+                }
+                
                 // Hide reset button
                 resetGridBtn.style.display = 'none';
                 
