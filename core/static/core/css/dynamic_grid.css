@@ -28,4 +28,61 @@
 }
 .select2-container {
     z-index: 9999 !important;
+}
+
+/* Column Resizing Styles */
+.resizable-column {
+    position: relative;
+    min-width: 100px;
+    user-select: none;
+}
+
+.resizable-column .header-content {
+    padding-right: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    background-color: transparent;
+    cursor: col-resize;
+    transition: background-color 0.2s ease;
+}
+
+.resize-handle:hover,
+.resize-handle.resizing {
+    background-color: #007bff;
+}
+
+.no-resize {
+    user-select: none;
+}
+
+/* Visual feedback during resize */
+.resizable-column.resizing {
+    background-color: #f8f9fa;
+}
+
+/* Prevent text selection during resize */
+.resizing * {
+    user-select: none;
+}
+
+/* Ensure table doesn't break layout during resize */
+#dynamic-grid-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#dynamic-grid-table th,
+#dynamic-grid-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 } 

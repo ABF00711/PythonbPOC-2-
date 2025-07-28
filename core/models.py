@@ -40,3 +40,18 @@ class RoleMenu(models.Model):
         unique_together = ('role', 'menu')
     def __str__(self):
         return f"{self.role.name} - {self.menu.title}"
+
+class SearchPattern(models.Model):
+    tablename = models.CharField(max_length=100)
+    username = models.CharField(max_length=150)
+    searchname = models.CharField(max_length=200)
+    searchdata = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('tablename', 'username', 'searchname')
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.username} - {self.tablename} - {self.searchname}"

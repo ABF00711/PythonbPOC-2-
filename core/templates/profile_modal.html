@@ -7,11 +7,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body text-center">
-        {% if user.avatar and user.avatar.name %}
-            <img src="{{ user.avatar.url }}" alt="Avatar" class="modal-profile-avatar">
-        {% else %}
-            <img src="https://ui-avatars.com/api/?name={{ user.username|urlencode }}&background=6366f1&color=fff&size=80" alt="Avatar" class="modal-profile-avatar">
-        {% endif %}
+        <div class="profile-avatar">
+            {% if user.avatar and user.avatar.name %}
+                <img src="{{ user.avatar.url }}" alt="Avatar" class="modal-profile-avatar">
+            {% else %}
+                <img src="https://ui-avatars.com/api/?name={{ user.username|urlencode }}&background=6366f1&color=fff&size=80" alt="Avatar" class="modal-profile-avatar">
+            {% endif %}
+        </div>
         <form id="profileForm" method="post" enctype="multipart/form-data" action="{% url 'profile' %}">
             {% csrf_token %}
             {% if messages %}
@@ -51,3 +53,5 @@
     </div>
   </div>
 </div> 
+
+<link rel="stylesheet" href="../static/core/css/profile.css">

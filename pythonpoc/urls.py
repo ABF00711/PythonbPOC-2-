@@ -18,7 +18,9 @@ from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from core.views import register, custom_login, profile, home, about, contact, dynamic_grid
-from core.views import api_fields, api_options, api_create, api_record, api_update
+from core.views import api_fields, api_options, api_create, api_record, api_update 
+from core.views import api_delete, api_gsearch, api_search
+from core.views import api_search_patterns, api_save_search_pattern, api_delete_search_pattern, api_reset_grid
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -36,6 +38,13 @@ urlpatterns = [
     path('api/create/<str:table_name>/', api_create, name='api_create'),
     path('api/record/<str:table_name>/<int:record_id>/', api_record, name='api_record'),
     path('api/update/<str:table_name>/<int:record_id>/', api_update, name='api_update'),
+    path('api/delete/<str:table_name>/', api_delete, name='api_delete'),
+    path('api/gsearch/<str:table_name>/<str:field_name>/', api_gsearch, name='api_gsearch'),
+    path('api/search/<str:table_name>/', api_search, name='api_search'),
+    path('api/search-patterns/<str:table_name>/', api_search_patterns, name='api_search_patterns'),
+    path('api/save-search-pattern/<str:table_name>/', api_save_search_pattern, name='api_save_search_pattern'),
+    path('api/delete-search-pattern/<str:table_name>/', api_delete_search_pattern, name='api_delete_search_pattern'),
+    path('api/reset-grid/<str:table_name>/', api_reset_grid, name='api_reset_grid'),
     path('<str:form_name>/', dynamic_grid, name='dynamic_grid'),
 ]
 

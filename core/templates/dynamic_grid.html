@@ -2,6 +2,7 @@
 {% load static widget_tweaks grid_extras %}
 {% block title %}{{ form_name|title }} - PythonPOC{% endblock %}
 {% block content %}
+{% csrf_token %}
 {% if error %}
 <div class="alert alert-danger">{{ error }}</div>
 {% else %}
@@ -11,24 +12,32 @@
         <span class="badge bg-secondary fs-5">Total: {{ total_count }}</span>
     </div>
     <button class="btn btn-primary mb-3" id="add-record-btn">Add</button>
+    <button class="btn btn-danger mb-3 ms-2" id="delete-selected-btn" disabled>Delete Selected</button>
+    <button class="btn btn-secondary mb-3 ms-2" id="search-grid-btn">Search</button>
+    <button class="btn btn-warning mb-3 ms-2" id="reset-grid-btn" style="display: none;">Reset Grid</button>
     <div class="table-responsive">
-        <table class="table table-bordered table-hover">
+        <table class="table table-bordered table-hover" id="dynamic-grid-table">
             <thead class="table-light">
                 <tr>
+                    <th style="width:40px;" class="no-resize"><input type="checkbox" id="select-all-checkbox" title="Select all"></th>
                     {% for col in columns %}
-                        <th>{{ col.0 }}</th>
+                        <th class="resizable-column" data-column-name="{{ col.1 }}">
+                            <div class="header-content">{{ col.0 }}</div>
+                            <div class="resize-handle"></div>
+                        </th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
                 {% for row in data %}
                     <tr data-record-id="{{ row|get_item:'id' }}">
+                        <td><input type="checkbox" class="row-select-checkbox"></td>
                         {% for col in columns %}
                             <td>{{ row|get_item:col.1|default_if_none:"" }}</td>
                         {% endfor %}
                     </tr>
                 {% empty %}
-                    <tr><td colspan="{{ columns|length }}" class="text-center">No data found.</td></tr>
+                    <tr><td colspan="{{ columns|length|add:1 }}" class="text-center">No data found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -63,14 +72,92 @@
   </div>
 </div>
 
-<!-- jQuery (required for Select2) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- Select2 CSS/JS for inputable dropdowns -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<!-- Dynamic Grid CSS/JS -->
-<link rel="stylesheet" href="{% static 'core/css/dynamic_grid.css' %}">
-<script src="{% static 'core/js/dynamic_grid.js' %}"></script>
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bulkDeleteModalLabel">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p id="bulk-delete-message">Are you sure you want to permanently delete the selected records?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-bulk-delete-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Dynamic Search Modal -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="searchModalLabel">Search</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="dynamic-search-form">
+          <!-- Search Pattern Section -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="search-pattern-select" class="form-label">Search Pattern</label>
+              <select class="form-select" id="search-pattern-select">
+                <option value="">-- Select Saved Pattern --</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="search-pattern-name" class="form-label">Save As</label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="search-pattern-name" placeholder="Enter pattern name">
+                <button type="button" class="btn btn-success" id="save-pattern-btn">Save</button>
+                <button type="button" class="btn btn-danger" id="delete-pattern-btn" disabled>Delete</button>
+              </div>
+            </div>
+          </div>
+          
+          <div id="dynamic-search-fields">
+            <!-- Search fields will be injected here by JS -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="reset-search-btn">Reset</button>
+            <button type="button" class="btn btn-primary" id="execute-search-btn">Search</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+            <!-- jQuery (required for Select2) -->
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <!-- Select2 CSS/JS for inputable dropdowns -->
+            <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+            <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+            <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+            <!-- Bootstrap JS -->
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <!-- Dynamic Grid CSS -->
+            <link rel="stylesheet" href="{% static 'core/css/dynamic_grid.css' %}">
+            <!-- Column Resizer -->
+            <script src="{% static 'core/js/dynamic_grid/column-resizer.js' %}"></script>
+            <!-- Modal logic (non-module, attaches to window) -->
+            <script src="{% static 'core/js/dynamic_grid/modal.js' %}"></script>
+            <!-- Main dynamic grid logic as a module -->
+            <script type="module" src="{% static 'core/js/dynamic_grid.js' %}"></script>
+            <!-- Bootstrap Toast for notifications -->
+            <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+              <div id="grid-toast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+                <div class="d-flex">
+                  <div class="toast-body" id="grid-toast-body">
+                    <!-- Message will be injected here -->
+                  </div>
+                  <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+              </div>
+            </div>
 {% endif %}
 {% endblock %} 

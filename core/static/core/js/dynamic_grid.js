@@ -1,7 +1,11 @@
 // dynamic_grid.js
-// Handles dynamic create modal, inputable dropdowns, and AJAX grid update
+// Main orchestrator for the dynamic grid UI
+import { updateGrid } from './dynamic_grid/grid.js';
+import { createRecord, updateRecord, deleteRecords, searchRecords, resetGrid } from './dynamic_grid/crud.js';
+import { formatDateYMDToMDY, showToast } from './dynamic_grid/utils.js';
+import { SearchPatternManager } from './dynamic_grid/search_patterns.js';
 
-
+// Assumes modal.js is loaded and exposes window.renderFormFields, window.showEditModal, window.renderSearchFields
 
 document.addEventListener('DOMContentLoaded', function() {
     const addBtn = document.getElementById('add-record-btn');
@@ -10,14 +14,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('dynamic-create-form');
     const tableName = document.querySelector('.container[data-table-name]').dataset.tableName;
     let fieldConfigs = [];
+    
+    // Initialize search pattern manager (will be initialized when search modal is shown)
+    let searchPatternManager = null;
 
-    if (addBtn) {``
+    if (addBtn) {
         addBtn.addEventListener('click', function() {
             fetch(`/api/fields/${tableName}/`)
                 .then(res => res.json())
                 .then(data => {
                     fieldConfigs = data.fields;
-                    renderFormFields(fieldConfigs);
+                    window.renderFormFields(fieldConfigs, formFieldsDiv, tableName);
                     modal.show();
                 })
                 .catch(err => {
@@ -27,87 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function renderFormFields(fields) {
-        formFieldsDiv.innerHTML = '';
-        fields.forEach(field => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'mb-3';
-            const label = document.createElement('label');
-            label.className = 'form-label';
-            label.htmlFor = `field_${field.name}`;
-            label.innerHTML = field.label + (field.mandatory ? ' <span class="text-danger">*</span>' : '');
-            wrapper.appendChild(label);
-            let input;
-            if (['select', 'autocomplete', 'dropdown'].includes(field.type)) {
-                input = document.createElement('select');
-                input.className = 'form-control inputable-dropdown';
-                input.id = `field_${field.name}`;
-                input.name = field.name;
-                input.setAttribute('data-lookup', '1');
-                input.setAttribute('data-table', tableName);
-                input.setAttribute('data-field', field.name);
-                wrapper.appendChild(input);
-            } else if (field.type === 'date') {
-                input = document.createElement('input');
-                input.type = 'date';
-                input.className = 'form-control';
-                input.id = `field_${field.name}`;
-                input.name = field.name;
-                wrapper.appendChild(input);
-            } else if (field.type === 'number') {
-                input = document.createElement('input');
-                input.type = 'number';
-                input.className = 'form-control';
-                input.id = `field_${field.name}`;
-                input.name = field.name;
-                wrapper.appendChild(input);
-            } else {
-                input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'form-control';
-                input.id = `field_${field.name}`;
-                input.name = field.name;
-                wrapper.appendChild(input);
-            }
-            // Validation error placeholder
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'invalid-feedback';
-            errorDiv.id = `error_${field.name}`;
-            wrapper.appendChild(errorDiv);
-            formFieldsDiv.appendChild(wrapper);
-        });
-        // Initialize Select2 for inputable dropdowns
-        $(formFieldsDiv).find('.inputable-dropdown').each(function() {
-            const $select = $(this);
-            const field = $select.data('field');
-            const table = $select.data('table');
-            // Ensure select is enabled BEFORE initializing Select2
-            $select.prop('disabled', false);
-            $select.select2({
-                theme: 'bootstrap-5', // Use Bootstrap 5 theme
-                tags: true, // Enable typing new tags
-                width: '100%',
-                ajax: {
-                    url: `/api/options/${table}/${field}/`,
-                    dataType: 'json',
-                    processResults: function(data) {
-                        return { results: data.options.map(function(option) { return { id: option.text, text: option.text }; }) };
-                    }
-                },
-                placeholder: 'Select or type to add',
-                allowClear: true,
-                createTag: function (params) { // Allow creating new tags
-                    var term = $.trim(params.term);
-                    if (term === '') { return null; }
-                    return { id: term, text: term, newTag: true };
-                },
-                dropdownParent: $('#createModal') // CRITICAL: ensures Select2 input is not disabled in modal
-            });
-        });
-    }
-
     if (form) {
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             // Clear previous errors
             fieldConfigs.forEach(f => {
@@ -138,23 +66,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (firstInvalid) firstInvalid.focus();
                 return;
             }
-            fetch(`/api/create/${tableName}/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    modal.hide();
-                    location.reload(); // For now, reload grid. Can be replaced with AJAX update.
-                } else if (data.errors) {
-                    Object.entries(data.errors).forEach(([field, msg]) => {
-                        const err = document.getElementById(`error_${field}`);
-                        if (err) err.textContent = msg;
-                    });
-                }
-            });
+            const data = await createRecord(tableName, formData);
+            if (data.success) {
+                modal.hide();
+                location.reload(); // For now, reload grid. Can be replaced with AJAX update.
+            } else if (data.errors) {
+                Object.entries(data.errors).forEach(([field, msg]) => {
+                    const err = document.getElementById(`error_${field}`);
+                    if (err) err.textContent = msg;
+                });
+            }
         });
     }
 
@@ -165,139 +86,22 @@ document.addEventListener('DOMContentLoaded', function() {
             row.addEventListener('dblclick', function() {
                 const recordId = row.getAttribute('data-record-id');
                 if (!recordId) return;
-                // Fetch field configs if not loaded
                 const fetchFields = fieldConfigs.length === 0
                     ? fetch(`/api/fields/${tableName}/`).then(res => res.json()).then(data => { fieldConfigs = data.fields; })
                     : Promise.resolve();
                 fetchFields.then(() => {
-                    // Fetch the full record from backend
                     fetch(`/api/record/${tableName}/${recordId}/`)
                         .then(res => res.json())
                         .then(recordData => {
-                            showEditModal(fieldConfigs, recordData);
+                            window.showEditModal(fieldConfigs, recordData, tableName);
                         });
                 });
             });
         });
     }
 
-    // Show Edit modal (dynamically generated)
-    function showEditModal(fields, rowData) {
-        // Clone the create modal and change IDs
-        let editModal = document.getElementById('editModal');
-        if (!editModal) {
-            editModal = document.getElementById('createModal').cloneNode(true);
-            editModal.id = 'editModal';
-            editModal.querySelector('.modal-title').textContent = 'Edit ' + tableName.charAt(0).toUpperCase() + tableName.slice(1);
-            editModal.querySelector('form').id = 'dynamic-edit-form';
-            // Change Save button to Edit
-            const editBtn = editModal.querySelector('button[type="submit"]');
-            editBtn.textContent = 'Edit';
-            // Insert modal into DOM
-            document.body.appendChild(editModal);
-        }
-        // Render fields and pre-fill values
-        const editFormFieldsDiv = editModal.querySelector('#dynamic-form-fields');
-        editFormFieldsDiv.innerHTML = '';
-        fields.forEach(field => {
-            if (field.name.toLowerCase() === 'id') return; // skip ID
-            const wrapper = document.createElement('div');
-            wrapper.className = 'mb-3';
-            const label = document.createElement('label');
-            label.className = 'form-label';
-            label.htmlFor = `edit_field_${field.name}`;
-            label.innerHTML = field.label + (field.mandatory ? ' <span class="text-danger">*</span>' : '');
-            wrapper.appendChild(label);
-            let input;
-            if (["select", "autocomplete", "dropdown"].includes(field.type)) {
-                input = document.createElement('select');
-                input.className = 'form-control inputable-dropdown';
-                input.id = `edit_field_${field.name}`;
-                input.name = field.name;
-                input.setAttribute('data-lookup', '1');
-                input.setAttribute('data-table', tableName);
-                input.setAttribute('data-field', field.name);
-                wrapper.appendChild(input);
-            } else if (field.type === 'date') {
-                input = document.createElement('input');
-                input.type = 'date';
-                input.className = 'form-control';
-                input.id = `edit_field_${field.name}`;
-                input.name = field.name;
-                let val = rowData[field.name] || '';
-                input.value = val;
-                wrapper.appendChild(input);
-            } else if (field.type === 'number') {
-                input = document.createElement('input');
-                input.type = 'number';
-                input.className = 'form-control';
-                input.id = `edit_field_${field.name}`;
-                input.name = field.name;
-                input.value = rowData[field.name] || '';
-                wrapper.appendChild(input);
-            } else {
-                input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'form-control';
-                input.id = `edit_field_${field.name}`;
-                input.name = field.name;
-                input.value = rowData[field.name] || '';
-                wrapper.appendChild(input);
-            }
-            // Validation error placeholder
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'invalid-feedback';
-            errorDiv.id = `edit_error_${field.name}`;
-            wrapper.appendChild(errorDiv);
-            editFormFieldsDiv.appendChild(wrapper);
-        });
-        // Initialize Select2 for inputable dropdowns
-        $(editFormFieldsDiv).find('.inputable-dropdown').each(function() {
-            const $select = $(this);
-            const field = $select.data('field');
-            const table = $select.data('table');
-            $select.prop('disabled', false);
-            $select.select2({
-                theme: 'bootstrap-5',
-                tags: true,
-                width: '100%',
-                ajax: {
-                    url: `/api/options/${table}/${field}/`,
-                    dataType: 'json',
-                    processResults: function(data) {
-                        return { results: data.options.map(function(option) { return { id: option.text, text: option.text }; }) };
-                    }
-                },
-                placeholder: 'Select or type to add',
-                allowClear: true,
-                createTag: function (params) {
-                    var term = $.trim(params.term);
-                    if (term === '') { return null; }
-                    return { id: term, text: term, newTag: true };
-                },
-                dropdownParent: $('#editModal')
-            });
-        });
-        // Pre-fill dropdowns after Select2 is initialized
-        setTimeout(() => {
-            fields.forEach(field => {
-                if (["select", "autocomplete", "dropdown"].includes(field.type)) {
-                    const $select = $(editFormFieldsDiv).find(`[name="${field.name}"]`);
-                    if ($select.length && rowData[field.name]) {
-                        $select.append(new Option(rowData[field.name], rowData[field.name], true, true)).trigger('change');
-                    }
-                }
-            });
-        }, 300);
-        // Set record id on modal for later use
-        editModal.setAttribute('data-record-id', rowData.id);
-        // Show modal
-        const editModalInstance = new bootstrap.Modal(editModal);
-        editModalInstance.show();
-    }
-
-    // Edit modal form submission
-    document.addEventListener('submit', function(e) {
+    // Edit modal form submission (global handler)
+    document.addEventListener('submit', async function(e) {
         const form = e.target;
         if (form && form.id === 'dynamic-edit-form') {
             e.preventDefault();
@@ -334,22 +138,250 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (firstInvalid) firstInvalid.focus();
                 return;
             }
-            fetch(`/api/update/${tableName}/${recordId}/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    bootstrap.Modal.getInstance(modal).hide();
-                    location.reload();
-                } else if (data.error) {
-                    alert('Error: ' + data.error);
-                }
-            });
+            const data = await updateRecord(tableName, recordId, formData);
+            if (data.success) {
+                bootstrap.Modal.getInstance(modal).hide();
+                location.reload();
+            } else if (data.error) {
+                showToast('Error: ' + data.error, 'error');
+            }
         }
     }, true);
+
+    // Bulk select/deselect logic for grid checkboxes
+    function updateDeleteButtonState() {
+        const anyChecked = document.querySelectorAll('.row-select-checkbox:checked').length > 0;
+        document.getElementById('delete-selected-btn').disabled = !anyChecked;
+    }
+
+    const selectAll = document.getElementById('select-all-checkbox');
+    const deleteBtn = document.getElementById('delete-selected-btn');
+    const bulkDeleteModal = document.getElementById('bulkDeleteModal');
+    const bulkDeleteMsg = document.getElementById('bulk-delete-message');
+    const confirmBulkDeleteBtn = document.getElementById('confirm-bulk-delete-btn');
+
+    if (selectAll && table) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = table.querySelectorAll('.row-select-checkbox');
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateDeleteButtonState();
+        });
+        table.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-select-checkbox')) {
+                const checkboxes = table.querySelectorAll('.row-select-checkbox');
+                const checked = table.querySelectorAll('.row-select-checkbox:checked');
+                selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+                updateDeleteButtonState();
+            }
+        });
+    }
+
+    // Bulk Delete Button click
+    if (deleteBtn && bulkDeleteModal && bulkDeleteMsg && confirmBulkDeleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+            const checked = table.querySelectorAll('.row-select-checkbox:checked');
+            const count = checked.length;
+            bulkDeleteMsg.textContent = `Are you sure you want to permanently delete ${count} selected record${count > 1 ? 's' : ''}?`;
+            const modal = new bootstrap.Modal(bulkDeleteModal);
+            modal.show();
+        });
+
+        confirmBulkDeleteBtn.addEventListener('click', async function() {
+            const checked = table.querySelectorAll('.row-select-checkbox:checked');
+            const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-record-id'));
+            if (!ids.length || !tableName) return;
+            const data = await deleteRecords(tableName, ids);
+            if (data.success) {
+                // Hide the confirmation modal
+                const modalInstance = bootstrap.Modal.getInstance(bulkDeleteModal);
+                if (modalInstance) modalInstance.hide();
+                showToast('Records deleted successfully!', 'success');
+                // Remove deleted rows from DOM
+                data.deleted.forEach(id => {
+                    const row = table.querySelector(`tr[data-record-id="${id}"]`);
+                    if (row) row.remove();
+                });
+                // Update total count badge
+                const totalBadge = document.querySelector('.badge.bg-secondary.fs-5');
+                if (totalBadge) {
+                    const current = parseInt(totalBadge.textContent.replace(/\D/g, ''));
+                    const newTotal = Math.max(0, current - data.deleted.length);
+                    totalBadge.textContent = `Total: ${newTotal}`;
+                }
+                // If no rows left, show 'No data found'
+                const tbody = table.querySelector('tbody');
+                if (tbody && !tbody.querySelector('tr')) {
+                    const colCount = table.querySelectorAll('thead th').length;
+                    const tr = document.createElement('tr');
+                    const td = document.createElement('td');
+                    td.colSpan = colCount;
+                    td.className = 'text-center';
+                    td.textContent = 'No data found.';
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                }
+                // Deselect select-all and disable delete button
+                if (selectAll) selectAll.checked = false;
+                if (deleteBtn) deleteBtn.disabled = true;
+            } else if (data.error) {
+                showToast('Error: ' + data.error, 'error');
+            }
+        });
+    }
+
+    // Search Button click
+    const searchBtn = document.getElementById('search-grid-btn');
+    const searchModal = document.getElementById('searchModal');
+    const searchFieldsContainer = document.getElementById('dynamic-search-fields');
+    const resetSearchBtn = document.getElementById('reset-search-btn');
+    const executeSearchBtn = document.getElementById('execute-search-btn');
+
+    if (searchBtn && searchModal) {
+        searchBtn.addEventListener('click', function() {
+            fetch(`/api/fields/${tableName}/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.fields) {
+                        window.renderSearchFields(data.fields, searchFieldsContainer, tableName);
+                        const modal = new bootstrap.Modal(searchModal);
+                        modal.show();
+                        
+                        // Initialize search pattern manager after modal is shown and fields are rendered
+                        if (tableName) {
+                            // Use setTimeout to ensure modal is fully rendered
+                            setTimeout(() => {
+                                if (!searchPatternManager) {
+                                    searchPatternManager = new SearchPatternManager(tableName);
+                                } else {
+                                    // Re-initialize if it already exists to refresh patterns
+                                    searchPatternManager.init();
+                                }
+                            }, 100);
+                        }
+                    }
+                });
+        });
+    }
+
+    // Reset Search Button
+    if (resetSearchBtn) {
+        resetSearchBtn.addEventListener('click', function() {
+            const operatorSelects = searchModal.querySelectorAll('.operator-select');
+            const searchInputs = searchModal.querySelectorAll('.search-input');
+            const sortFieldSelects = searchModal.querySelectorAll('.sort-field-select');
+            const sortDirectionSelects = searchModal.querySelectorAll('.sort-direction-select');
+            
+            operatorSelects.forEach(select => select.value = '');
+            searchInputs.forEach(input => input.value = '');
+            sortFieldSelects.forEach(select => select.value = '');
+            sortDirectionSelects.forEach(select => select.value = '');
+            
+            // Reset search pattern form using the manager
+            if (searchPatternManager) {
+                searchPatternManager.resetForm();
+            }
+        });
+    }
+
+    // Execute Search Button
+    if (executeSearchBtn) {
+        executeSearchBtn.addEventListener('click', async function() {
+            const searchData = {};
+            const operatorSelects = searchModal.querySelectorAll('.operator-select');
+            const searchInputs = searchModal.querySelectorAll('.search-input');
+
+            operatorSelects.forEach((select, index) => {
+                const fieldName = select.getAttribute('data-field');
+                const operator = select.value;
+                let value = '';
+                const input = searchInputs[index];
+                if (input) {
+                    if (input.tagName === 'SELECT') {
+                        value = $(input).val();
+                    } else {
+                        value = input.value;
+                    }
+                }
+                if (operator && value) {
+                    searchData[fieldName] = { operator, value };
+                }
+            });
+
+            // --- Collect sort info ---
+            const sort = [];
+            const sortFields = searchModal.querySelectorAll('.sort-field-select');
+            const sortDirections = searchModal.querySelectorAll('.sort-direction-select');
+            for (let i = 0; i < sortFields.length; i++) {
+                const field = sortFields[i].value;
+                const direction = sortDirections[i].value;
+                if (field && direction) {
+                    sort.push({ field, direction });
+                }
+            }
+            // Add sort array to searchData
+            searchData.sort = sort;
+
+            const data = await searchRecords(tableName, searchData);
+            if (data && data.data) {
+                updateGrid(data.columns, data.data, data.total_count);
+                showToast('Search complete', 'success');
+                attachGridEventHandlers(tableName, fieldConfigs);
+                
+                // Show reset grid button after search
+                const resetGridBtn = document.getElementById('reset-grid-btn');
+                if (resetGridBtn) {
+                    resetGridBtn.style.display = 'inline-block';
+                }
+            } else {
+                showToast('No results found', 'warning');
+            }
+            // Close modal
+            const modalInstance = bootstrap.Modal.getInstance(searchModal);
+            if (modalInstance) modalInstance.hide();
+        });
+    }
+
+    // Reset Grid Button
+    const resetGridBtn = document.getElementById('reset-grid-btn');
+    if (resetGridBtn) {
+        resetGridBtn.addEventListener('click', async function() {
+            try {
+                // Show loading state
+                resetGridBtn.disabled = true;
+                resetGridBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+                
+                // Fetch original data from the API
+                const data = await resetGrid(tableName);
+                if (data && data.data) {
+                    
+                                    // Update grid with original data
+                updateGrid(data.columns, data.data, data.total_count);
+                
+                // Reset column widths
+                if (window.columnResizer) {
+                    window.columnResizer.resetColumnWidths();
+                }
+                
+                // Hide reset button
+                resetGridBtn.style.display = 'none';
+                
+                // Re-attach event handlers
+                attachGridEventHandlers(tableName, fieldConfigs);
+                    
+                    showToast('Grid reset to original data', 'success');
+                } else {
+                    throw new Error('Failed to fetch original data');
+                }
+            } catch (error) {
+                console.error('Error resetting grid:', error);
+                showToast('Error resetting grid. Please refresh the page.', 'error');
+            } finally {
+                // Reset button state
+                resetGridBtn.disabled = false;
+                resetGridBtn.innerHTML = 'Reset Grid';
+            }
+        });
+    }
 
     // After DOMContentLoaded, update grid display for birthday fields
     if (window.GRID_COLUMNS && Array.isArray(window.GRID_COLUMNS)) {
@@ -364,3 +396,56 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 }); 
+
+// --- Helper to re-attach row and checkbox handlers after grid update ---
+function attachGridEventHandlers(tableName, fieldConfigs) {
+    const table = document.querySelector('table.table');
+    if (!table) return;
+    // Row double-click for Edit
+    table.querySelectorAll('tbody tr').forEach(row => {
+        row.addEventListener('dblclick', function() {
+            const recordId = row.getAttribute('data-record-id');
+            if (!recordId) return;
+            const fetchFields = fieldConfigs.length === 0
+                ? fetch(`/api/fields/${tableName}/`).then(res => res.json()).then(data => { fieldConfigs = data.fields; })
+                : Promise.resolve();
+            fetchFields.then(() => {
+                fetch(`/api/record/${tableName}/${recordId}/`)
+                    .then(res => res.json())
+                    .then(recordData => {
+                        window.showEditModal(fieldConfigs, recordData, tableName);
+                    });
+            });
+        });
+    });
+    // Bulk select/deselect logic for grid checkboxes
+    const selectAll = document.getElementById('select-all-checkbox');
+    const deleteBtn = document.getElementById('delete-selected-btn');
+    function updateDeleteButtonState() {
+        const anyChecked = document.querySelectorAll('.row-select-checkbox:checked').length > 0;
+        if (deleteBtn) deleteBtn.disabled = !anyChecked;
+    }
+    if (selectAll && table) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = table.querySelectorAll('.row-select-checkbox');
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateDeleteButtonState();
+        });
+        table.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-select-checkbox')) {
+                const checkboxes = table.querySelectorAll('.row-select-checkbox');
+                const checked = table.querySelectorAll('.row-select-checkbox:checked');
+                selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+                updateDeleteButtonState();
+            }
+        });
+    }
+}
+// --- Initial attach on page load ---
+//attachGridEventHandlers();
+// After every updateGrid (e.g., after search, after delete), call attachGridEventHandlers();
+// For example, after updateGrid in search:
+// updateGrid(data.columns, data.data, data.total_count);
+// attachGridEventHandlers();
+// ... existing code ...
+// In all places where updateGrid is called, add attachGridEventHandlers() immediately after. 
