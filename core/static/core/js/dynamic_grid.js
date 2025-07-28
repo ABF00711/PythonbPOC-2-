@@ -3,6 +3,7 @@
 import { updateGrid } from './dynamic_grid/grid.js';
 import { createRecord, updateRecord, deleteRecords, searchRecords } from './dynamic_grid/crud.js';
 import { formatDateYMDToMDY, showToast } from './dynamic_grid/utils.js';
+import { SearchPatternManager } from './dynamic_grid/search_patterns.js';
 
 // Assumes modal.js is loaded and exposes window.renderFormFields, window.showEditModal, window.renderSearchFields
 
@@ -13,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('dynamic-create-form');
     const tableName = document.querySelector('.container[data-table-name]').dataset.tableName;
     let fieldConfigs = [];
+    
+    // Initialize search pattern manager (will be initialized when search modal is shown)
+    let searchPatternManager = null;
 
     if (addBtn) {
         addBtn.addEventListener('click', function() {
@@ -241,6 +245,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.renderSearchFields(data.fields, searchFieldsContainer, tableName);
                         const modal = new bootstrap.Modal(searchModal);
                         modal.show();
+                        
+                        // Initialize search pattern manager after modal is shown
+                        if (!searchPatternManager && tableName) {
+                            searchPatternManager = new SearchPatternManager(tableName);
+                        }
                     }
                 });
         });
@@ -251,9 +260,22 @@ document.addEventListener('DOMContentLoaded', function() {
         resetSearchBtn.addEventListener('click', function() {
             const operatorSelects = searchModal.querySelectorAll('.operator-select');
             const searchInputs = searchModal.querySelectorAll('.search-input');
+            const sortFieldSelects = searchModal.querySelectorAll('.sort-field-select');
+            const sortDirectionSelects = searchModal.querySelectorAll('.sort-direction-select');
             
             operatorSelects.forEach(select => select.value = '');
             searchInputs.forEach(input => input.value = '');
+            sortFieldSelects.forEach(select => select.value = '');
+            sortDirectionSelects.forEach(select => select.value = '');
+            
+            // Clear search pattern selection
+            const patternSelect = document.getElementById('search-pattern-select');
+            const patternNameInput = document.getElementById('search-pattern-name');
+            if (patternSelect) patternSelect.value = '';
+            if (patternNameInput) patternNameInput.value = '';
+            if (searchPatternManager) {
+                document.getElementById('delete-pattern-btn').disabled = true;
+            }
         });
     }
 
@@ -283,8 +305,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // --- Collect sort info ---
             const sort = [];
-            const sortFields = searchModal.querySelectorAll('.sort-field');
-            const sortDirections = searchModal.querySelectorAll('.sort-direction');
+            const sortFields = searchModal.querySelectorAll('.sort-field-select');
+            const sortDirections = searchModal.querySelectorAll('.sort-direction-select');
             for (let i = 0; i < sortFields.length; i++) {
                 const field = sortFields[i].value;
                 const direction = sortDirections[i].value;

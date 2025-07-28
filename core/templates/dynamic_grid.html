@@ -2,6 +2,7 @@
 {% load static widget_tweaks grid_extras %}
 {% block title %}{{ form_name|title }} - PythonPOC{% endblock %}
 {% block content %}
+{% csrf_token %}
 {% if error %}
 <div class="alert alert-danger">{{ error }}</div>
 {% else %}
@@ -96,6 +97,24 @@
       </div>
       <div class="modal-body">
         <form id="dynamic-search-form">
+          <!-- Search Pattern Section -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="search-pattern-select" class="form-label">Search Pattern</label>
+              <select class="form-select" id="search-pattern-select">
+                <option value="">-- Select Saved Pattern --</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="search-pattern-name" class="form-label">Save As</label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="search-pattern-name" placeholder="Enter pattern name">
+                <button type="button" class="btn btn-success" id="save-pattern-btn">Save</button>
+                <button type="button" class="btn btn-danger" id="delete-pattern-btn" disabled>Delete</button>
+              </div>
+            </div>
+          </div>
+          
           <div id="dynamic-search-fields">
             <!-- Search fields will be injected here by JS -->
           </div>

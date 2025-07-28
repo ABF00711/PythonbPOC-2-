@@ -12,6 +12,7 @@ from django.db import connection
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
+from .models import SearchPattern
 import json
 
 # Create your views here.
@@ -353,3 +354,85 @@ def api_search(request, table_name):
     cursor.execute(count_sql, params)
     total_count = cursor.fetchone()[0]
     return JsonResponse({'columns': columns, 'data': data, 'total_count': total_count})
+
+@require_GET
+@login_required
+def api_search_patterns(request, table_name):
+    """Get all search patterns for the current user and table."""
+    try:
+        patterns = SearchPattern.objects.filter(
+            tablename=table_name,
+            username=request.user.username
+        ).values('id', 'searchname', 'searchdata', 'created_at', 'updated_at')
+        return JsonResponse({'patterns': list(patterns)})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_POST
+@csrf_exempt
+@login_required
+def api_save_search_pattern(request, table_name):
+    """Save or update a search pattern."""
+    try:
+        data = json.loads(request.body)
+        searchname = data.get('searchname', '').strip()
+        searchdata = data.get('searchdata', {})
+        
+        if not searchname:
+            return JsonResponse({'error': 'Search name is required'}, status=400)
+        
+        if not searchdata:
+            return JsonResponse({'error': 'Search data is required'}, status=400)
+        
+        # Check if pattern already exists for this user and table
+        pattern, created = SearchPattern.objects.get_or_create(
+            tablename=table_name,
+            username=request.user.username,
+            searchname=searchname,
+            defaults={'searchdata': searchdata}
+        )
+        
+        if not created:
+            # Update existing pattern
+            pattern.searchdata = searchdata
+            pattern.save()
+        
+        return JsonResponse({
+            'success': True,
+            'pattern': {
+                'id': pattern.id,
+                'searchname': pattern.searchname,
+                'searchdata': pattern.searchdata,
+                'created_at': pattern.created_at.isoformat(),
+                'updated_at': pattern.updated_at.isoformat()
+            },
+            'created': created
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_POST
+@csrf_exempt
+@login_required
+def api_delete_search_pattern(request, table_name):
+    """Delete a search pattern."""
+    try:
+        data = json.loads(request.body)
+        searchname = data.get('searchname', '').strip()
+        
+        if not searchname:
+            return JsonResponse({'error': 'Search name is required'}, status=400)
+        
+        # Delete the pattern
+        deleted_count, _ = SearchPattern.objects.filter(
+            tablename=table_name,
+            username=request.user.username,
+            searchname=searchname
+        ).delete()
+        
+        if deleted_count == 0:
+            return JsonResponse({'error': 'Search pattern not found'}, status=404)
+        
+        return JsonResponse({'success': True, 'deleted': searchname})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

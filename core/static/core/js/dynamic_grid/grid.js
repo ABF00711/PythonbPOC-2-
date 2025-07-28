@@ -34,7 +34,6 @@ export function updateGrid(columns, data, totalCount) {
     // Add new rows
     data.forEach(row => {
         const tr = document.createElement('tr');
-        console.log("row", row);
         tr.setAttribute('data-record-id', row.id || '');
 
         // Checkbox cell

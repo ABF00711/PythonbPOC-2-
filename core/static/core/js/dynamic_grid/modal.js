@@ -219,6 +219,7 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
     fields.forEach(field => {
         const fieldRow = document.createElement('div');
         fieldRow.className = 'row mb-3';
+        fieldRow.setAttribute('data-field', field.name);
         fieldRow.innerHTML = `
             <div class="col-md-3">
                 <label class="form-label">${field.label}</label>
@@ -320,17 +321,18 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
     // Sort1 row
     const sort1Row = document.createElement('div');
     sort1Row.className = 'row mb-3';
+    sort1Row.setAttribute('data-sort', '0');
     sort1Row.innerHTML = `
         <div class="col-md-2">
             <label class="form-label">Sort1</label>
         </div>
         <div class="col-md-5">
-            <select class="form-select sort-field" data-sort-index="1">
+            <select class="form-select sort-field-select" data-sort="0">
                 ${sortFieldOptions}
             </select>
         </div>
         <div class="col-md-5">
-            <select class="form-select sort-direction" data-sort-index="1">
+            <select class="form-select sort-direction-select" data-sort="0">
                 <option value="">Select direction</option>
                 <option value="asc">Increase</option>
                 <option value="desc">Decrease</option>
@@ -340,17 +342,18 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
     // Sort2 row
     const sort2Row = document.createElement('div');
     sort2Row.className = 'row mb-3';
+    sort2Row.setAttribute('data-sort', '1');
     sort2Row.innerHTML = `
         <div class="col-md-2">
             <label class="form-label">Sort2</label>
         </div>
         <div class="col-md-5">
-            <select class="form-select sort-field" data-sort-index="2">
+            <select class="form-select sort-field-select" data-sort="1">
                 ${sortFieldOptions}
             </select>
         </div>
         <div class="col-md-5">
-            <select class="form-select sort-direction" data-sort-index="2">
+            <select class="form-select sort-direction-select" data-sort="1">
                 <option value="">Select direction</option>
                 <option value="asc">Increase</option>
                 <option value="desc">Decrease</option>

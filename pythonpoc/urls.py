@@ -20,6 +20,7 @@ from django.contrib.auth import views as auth_views
 from core.views import register, custom_login, profile, home, about, contact, dynamic_grid
 from core.views import api_fields, api_options, api_create, api_record, api_update 
 from core.views import api_delete, api_gsearch, api_search
+from core.views import api_search_patterns, api_save_search_pattern, api_delete_search_pattern
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -40,6 +41,9 @@ urlpatterns = [
     path('api/delete/<str:table_name>/', api_delete, name='api_delete'),
     path('api/gsearch/<str:table_name>/<str:field_name>/', api_gsearch, name='api_gsearch'),
     path('api/search/<str:table_name>/', api_search, name='api_search'),
+    path('api/search-patterns/<str:table_name>/', api_search_patterns, name='api_search_patterns'),
+    path('api/save-search-pattern/<str:table_name>/', api_save_search_pattern, name='api_save_search_pattern'),
+    path('api/delete-search-pattern/<str:table_name>/', api_delete_search_pattern, name='api_delete_search_pattern'),
     path('<str:form_name>/', dynamic_grid, name='dynamic_grid'),
 ]
 
