@@ -14,7 +14,41 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
         label.innerHTML = field.label + (field.mandatory ? ' <span class="text-danger">*</span>' : '');
         wrapper.appendChild(label);
         let input;
-        if (['select', 'autocomplete', 'dropdown'].includes(field.type)) {
+        
+        // Special handling for job field - create autocomplete input
+        if (field.name.toLowerCase() === 'job') {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control job-autocomplete';
+            input.id = `field_${field.name}`;
+            input.name = field.name;
+            input.setAttribute('data-table', tableName);
+            input.setAttribute('data-field', field.name);
+            input.setAttribute('autocomplete', 'off');
+            wrapper.appendChild(input);
+            
+            // Create dropdown container for suggestions
+            const dropdownContainer = document.createElement('div');
+            dropdownContainer.className = 'job-suggestions-dropdown';
+            dropdownContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+            `;
+            wrapper.style.position = 'relative';
+            wrapper.appendChild(dropdownContainer);
+            
+            // Add autocomplete functionality
+            setupJobAutocomplete(input, dropdownContainer, tableName, field.name);
+        } else if (['select', 'autocomplete', 'dropdown'].includes(field.type)) {
             input = document.createElement('select');
             input.className = 'form-control inputable-dropdown';
             input.id = `field_${field.name}`;
@@ -52,7 +86,7 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
         wrapper.appendChild(errorDiv);
         formFieldsDiv.appendChild(wrapper);
     });
-    // Initialize Select2 for inputable dropdowns
+    // Initialize Select2 for inputable dropdowns (excluding job field)
     $(formFieldsDiv).find('.inputable-dropdown').each(function() {
         const $select = $(this);
         const field = $select.data('field');
@@ -79,6 +113,127 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
             dropdownParent: $('#createModal')
         });
     });
+}
+
+function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
+    let suggestions = [];
+    let selectedIndex = -1;
+    let isDropdownVisible = false;
+    
+    // Fetch existing jobs on focus
+    input.addEventListener('focus', async () => {
+        try {
+            const response = await fetch(`/api/options/${tableName}/${fieldName}/`);
+            const data = await response.json();
+            suggestions = data.options.map(option => option.text);
+        } catch (error) {
+            console.error('Error fetching job options:', error);
+            suggestions = [];
+        }
+    });
+    
+    // Handle input changes
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        if (query.length === 0) {
+            hideDropdown();
+            return;
+        }
+        
+        const filteredSuggestions = suggestions.filter(job => 
+            job.toLowerCase().includes(query)
+        );
+        
+        if (filteredSuggestions.length > 0) {
+            showDropdown(filteredSuggestions, query);
+        } else {
+            hideDropdown();
+        }
+    });
+    
+    // Handle keyboard navigation
+    input.addEventListener('keydown', (e) => {
+        if (!isDropdownVisible) return;
+        
+        const items = dropdownContainer.querySelectorAll('.suggestion-item');
+        
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection(items);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    selectSuggestion(items[selectedIndex].textContent);
+                }
+                break;
+            case 'Escape':
+                hideDropdown();
+                break;
+        }
+    });
+    
+    // Handle clicks outside to close dropdown
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdownContainer.contains(e.target)) {
+            hideDropdown();
+        }
+    });
+    
+    function showDropdown(suggestions, query) {
+        dropdownContainer.innerHTML = suggestions.map(suggestion => {
+            const highlightedSuggestion = suggestion.replace(
+                new RegExp(`(${query})`, 'gi'),
+                '<strong>$1</strong>'
+            );
+            return `<div class="suggestion-item p-2 border-bottom" style="cursor: pointer;">${highlightedSuggestion}</div>`;
+        }).join('');
+        
+        dropdownContainer.style.display = 'block';
+        isDropdownVisible = true;
+        selectedIndex = -1;
+        
+        // Add click handlers to suggestion items
+        dropdownContainer.querySelectorAll('.suggestion-item').forEach((item, index) => {
+            item.addEventListener('click', () => {
+                selectSuggestion(suggestions[index]);
+            });
+            
+            item.addEventListener('mouseenter', () => {
+                selectedIndex = index;
+                updateSelection(dropdownContainer.querySelectorAll('.suggestion-item'));
+            });
+        });
+    }
+    
+    function hideDropdown() {
+        dropdownContainer.style.display = 'none';
+        isDropdownVisible = false;
+        selectedIndex = -1;
+    }
+    
+    function updateSelection(items) {
+        items.forEach((item, index) => {
+            if (index === selectedIndex) {
+                item.style.backgroundColor = '#f8f9fa';
+            } else {
+                item.style.backgroundColor = 'white';
+            }
+        });
+    }
+    
+    function selectSuggestion(suggestion) {
+        input.value = suggestion;
+        hideDropdown();
+        input.focus();
+    }
 }
 
 function showEditModal(fields, rowData, tableName) {
@@ -108,7 +263,42 @@ function showEditModal(fields, rowData, tableName) {
         label.innerHTML = field.label + (field.mandatory ? ' <span class="text-danger">*</span>' : '');
         wrapper.appendChild(label);
         let input;
-        if (["select", "autocomplete", "dropdown"].includes(field.type)) {
+        
+        // Special handling for job field - create autocomplete input
+        if (field.name.toLowerCase() === 'job') {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control job-autocomplete';
+            input.id = `edit_field_${field.name}`;
+            input.name = field.name;
+            input.setAttribute('data-table', tableName);
+            input.setAttribute('data-field', field.name);
+            input.setAttribute('autocomplete', 'off');
+            input.value = rowData[field.name] || '';
+            wrapper.appendChild(input);
+            
+            // Create dropdown container for suggestions
+            const dropdownContainer = document.createElement('div');
+            dropdownContainer.className = 'job-suggestions-dropdown';
+            dropdownContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+            `;
+            wrapper.style.position = 'relative';
+            wrapper.appendChild(dropdownContainer);
+            
+            // Add autocomplete functionality
+            setupJobAutocomplete(input, dropdownContainer, tableName, field.name);
+        } else if (["select", "autocomplete", "dropdown"].includes(field.type)) {
             input = document.createElement('select');
             input.className = 'form-control inputable-dropdown';
             input.id = `edit_field_${field.name}`;
@@ -150,7 +340,7 @@ function showEditModal(fields, rowData, tableName) {
         wrapper.appendChild(errorDiv);
         editFormFieldsDiv.appendChild(wrapper);
     });
-    // Initialize Select2 for inputable dropdowns
+    // Initialize Select2 for inputable dropdowns (excluding job field)
     $(editFormFieldsDiv).find('.inputable-dropdown').each(function() {
         const $select = $(this);
         const field = $select.data('field');
@@ -180,7 +370,7 @@ function showEditModal(fields, rowData, tableName) {
     // Pre-fill dropdowns after Select2 is initialized
     setTimeout(() => {
         fields.forEach(field => {
-            if (["select", "autocomplete", "dropdown"].includes(field.type)) {
+            if (["select", "autocomplete", "dropdown"].includes(field.type) && field.name.toLowerCase() !== 'job') {
                 const $select = $(editFormFieldsDiv).find(`[name="${field.name}"]`);
                 if ($select.length && rowData[field.name]) {
                     $select.append(new Option(rowData[field.name], rowData[field.name], true, true)).trigger('change');
@@ -369,4 +559,4 @@ window.renderFormFields = renderFormFields;
 window.showEditModal = showEditModal;
 window.renderSearchFields = renderSearchFields;
 window.generateSearchInput = generateSearchInput;
-// Add more modal-related exports as needed 
+// Add more modal-related exports as needed

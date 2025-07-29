@@ -14,6 +14,12 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from .models import SearchPattern
 import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.db import connection
+from .models import GridLayout
+from django.contrib.auth.decorators import login_required
 
 # Create your views here.
 
@@ -658,3 +664,133 @@ def api_reset_grid(request, table_name):
         'data': data,
         'total_count': total_count
     })
+
+@csrf_exempt
+@require_http_methods(["GET"])
+@login_required
+def api_grid_layouts(request, table_name):
+    """Get all layouts for the current user and table"""
+    try:
+        username = request.user.username
+        layouts = GridLayout.objects.filter(
+            username=username,
+            table_name=table_name
+        ).order_by('-is_default', '-updated_at')
+        
+        layouts_data = []
+        for layout in layouts:
+            layouts_data.append({
+                'id': layout.id,
+                'layout_name': layout.layout_name,
+                'is_default': layout.is_default,
+                'created_at': layout.created_at.strftime('%Y-%m-%d %H:%M'),
+                'updated_at': layout.updated_at.strftime('%Y-%m-%d %H:%M')
+            })
+        
+        return JsonResponse({'layouts': layouts_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_save_grid_layout(request, table_name):
+    """Save current grid layout"""
+    try:
+        data = json.loads(request.body)
+        username = request.user.username
+        layout_name = data.get('layout_name')
+        layout_json = data.get('layout_json')
+        is_default = data.get('is_default', False)
+        
+        if not layout_name or not layout_json:
+            return JsonResponse({'error': 'Layout name and layout data are required'}, status=400)
+        
+        # Check if layout with same name exists
+        existing_layout = GridLayout.objects.filter(
+            username=username,
+            table_name=table_name,
+            layout_name=layout_name
+        ).first()
+        
+        if existing_layout:
+            # Update existing layout
+            existing_layout.layout_json = layout_json
+            existing_layout.is_default = is_default
+            existing_layout.save()
+            return JsonResponse({'message': 'Layout updated successfully', 'layout_id': existing_layout.id})
+        else:
+            # Create new layout
+            layout = GridLayout.objects.create(
+                username=username,
+                table_name=table_name,
+                layout_name=layout_name,
+                layout_json=layout_json,
+                is_default=is_default
+            )
+            return JsonResponse({'message': 'Layout saved successfully', 'layout_id': layout.id})
+            
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+@login_required
+def api_load_grid_layout(request, table_name, layout_id):
+    """Load a specific grid layout"""
+    try:
+        username = request.user.username
+        layout = GridLayout.objects.get(
+            id=layout_id,
+            username=username,
+            table_name=table_name
+        )
+        
+        return JsonResponse({
+            'layout_name': layout.layout_name,
+            'layout_json': layout.layout_json,
+            'is_default': layout.is_default
+        })
+    except GridLayout.DoesNotExist:
+        return JsonResponse({'error': 'Layout not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+@login_required
+def api_delete_grid_layout(request, table_name, layout_id):
+    """Delete a grid layout"""
+    try:
+        username = request.user.username
+        layout = GridLayout.objects.get(
+            id=layout_id,
+            username=username,
+            table_name=table_name
+        )
+        layout.delete()
+        return JsonResponse({'message': 'Layout deleted successfully'})
+    except GridLayout.DoesNotExist:
+        return JsonResponse({'error': 'Layout not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_set_default_layout(request, table_name, layout_id):
+    """Set a layout as default"""
+    try:
+        username = request.user.username
+        layout = GridLayout.objects.get(
+            id=layout_id,
+            username=username,
+            table_name=table_name
+        )
+        layout.is_default = True
+        layout.save()
+        return JsonResponse({'message': 'Default layout set successfully'})
+    except GridLayout.DoesNotExist:
+        return JsonResponse({'error': 'Layout not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

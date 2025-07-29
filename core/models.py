@@ -43,15 +43,39 @@ class RoleMenu(models.Model):
 
 class SearchPattern(models.Model):
     tablename = models.CharField(max_length=100)
-    username = models.CharField(max_length=150)
-    searchname = models.CharField(max_length=200)
+    username = models.CharField(max_length=100)
+    searchname = models.CharField(max_length=100)
     searchdata = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         unique_together = ('tablename', 'username', 'searchname')
-        ordering = ['-updated_at']
-    
+
     def __str__(self):
         return f"{self.username} - {self.tablename} - {self.searchname}"
+
+class GridLayout(models.Model):
+    username = models.CharField(max_length=100)
+    table_name = models.CharField(max_length=100)
+    layout_name = models.CharField(max_length=100)
+    layout_json = models.JSONField()
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('username', 'table_name', 'layout_name')
+
+    def __str__(self):
+        return f"{self.username} - {self.table_name} - {self.layout_name}"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one default layout per user per table
+        if self.is_default:
+            GridLayout.objects.filter(
+                username=self.username,
+                table_name=self.table_name,
+                is_default=True
+            ).exclude(id=self.id).update(is_default=False)
+        super().save(*args, **kwargs)

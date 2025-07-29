@@ -33,56 +33,389 @@
 /* Column Resizing Styles */
 .resizable-column {
     position: relative;
-    min-width: 100px;
     user-select: none;
-}
-
-.resizable-column .header-content {
-    padding-right: 20px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .resize-handle {
     position: absolute;
-    top: 0;
     right: 0;
+    top: 0;
+    bottom: 0;
     width: 4px;
-    height: 100%;
-    background-color: transparent;
     cursor: col-resize;
-    transition: background-color 0.2s ease;
+    background-color: transparent;
+    transition: background-color 0.2s;
 }
 
-.resize-handle:hover,
+.resize-handle:hover {
+    background-color: #007bff;
+}
+
 .resize-handle.resizing {
     background-color: #007bff;
 }
 
-.no-resize {
+/* Column Dragging Styles */
+.dragging {
+    cursor: grabbing !important;
+}
+
+.ghost-column {
+    cursor: grabbing !important;
+}
+
+.drop-indicator {
+    position: absolute;
+    width: 3px;
+    height: 100%;
+    background-color: #007bff;
+    z-index: 9998;
+    pointer-events: none;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.5);
+}
+
+/* Target Column Effects */
+.drop-target {
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.drop-target-before {
+    background: linear-gradient(90deg, 
+        rgba(0, 123, 255, 0.1) 0%, 
+        rgba(0, 123, 255, 0.05) 50%, 
+        transparent 100%);
+    border-left: 3px solid #007bff;
+    box-shadow: inset 2px 0 4px rgba(0, 123, 255, 0.1);
+}
+
+.drop-target-after {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(0, 123, 255, 0.05) 50%, 
+        rgba(0, 123, 255, 0.1) 100%);
+    border-right: 3px solid #007bff;
+    box-shadow: inset -2px 0 4px rgba(0, 123, 255, 0.1);
+}
+
+/* Enhanced target column effects for headers */
+.resizable-column.drop-target {
+    background: linear-gradient(135deg, 
+        rgba(0, 123, 255, 0.08) 0%, 
+        rgba(0, 123, 255, 0.04) 100%);
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.resizable-column.drop-target-before {
+    border-left: 4px solid #007bff;
+    padding-left: 8px;
+}
+
+.resizable-column.drop-target-after {
+    border-right: 4px solid #007bff;
+    padding-right: 8px;
+}
+
+/* Body cell target effects */
+td.drop-target {
+    background: linear-gradient(135deg, 
+        rgba(0, 123, 255, 0.06) 0%, 
+        rgba(0, 123, 255, 0.03) 100%);
+}
+
+td.drop-target-before {
+    border-left: 2px solid #007bff;
+}
+
+td.drop-target-after {
+    border-right: 2px solid #007bff;
+}
+
+/* Hover effect for target columns */
+.drop-target:hover {
+    background: linear-gradient(135deg, 
+        rgba(0, 123, 255, 0.12) 0%, 
+        rgba(0, 123, 255, 0.06) 100%);
+}
+
+/* Prevent text selection during drag */
+body.dragging {
+    cursor: grabbing;
     user-select: none;
 }
 
-/* Visual feedback during resize */
-.resizable-column.resizing {
-    background-color: #f8f9fa;
+body.dragging * {
+    cursor: grabbing !important;
 }
 
-/* Prevent text selection during resize */
-.resizing * {
-    user-select: none;
+/* Ensure Select2 dropdowns appear above modals */
+.select2-container {
+    z-index: 9999 !important;
 }
 
-/* Ensure table doesn't break layout during resize */
+/* Table styles */
 #dynamic-grid-table {
-    table-layout: fixed;
     width: 100%;
+    border-collapse: collapse;
 }
 
 #dynamic-grid-table th,
 #dynamic-grid-table td {
+    border: 1px solid #dee2e6;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+#dynamic-grid-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    position: relative;
+}
+
+#dynamic-grid-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Header content wrapper */
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding-right: 8px;
+}
+
+.column-title {
+    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.sort-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 8px;
+}
+
+.sort-btn {
+    padding: 2px 4px;
+    font-size: 10px;
+    line-height: 1;
+    border: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    color: #6c757d;
+    transition: all 0.2s ease;
+}
+
+.sort-btn:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+}
+
+.sort-btn.active {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.sort-btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+/* Checkbox column */
+.no-resize {
+    width: 40px;
+    text-align: center;
+}
+
+/* Responsive table */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Button styles */
+.btn-group {
+    margin-bottom: 15px;
+}
+
+.btn-group .btn {
+    margin-right: 5px;
+}
+
+/* Modal styles */
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.required-field::after {
+    content: " *";
+    color: #dc3545;
+}
+
+/* Search pattern styles */
+.search-pattern-item {
+    cursor: pointer;
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    transition: background-color 0.2s;
+}
+
+.search-pattern-item:hover {
+    background-color: #f8f9fa;
+}
+
+.search-pattern-item.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* Toast notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+}
+
+/* Loading indicator */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Error states */
+.has-error {
+    border-color: #dc3545 !important;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 5px;
+} 
+
+/* Layout Manager Styles */
+.layout-item {
+    transition: all 0.2s ease;
+    border: 1px solid #dee2e6 !important;
+}
+
+.layout-item:hover {
+    border-color: #007bff !important;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.layout-item .btn-group {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.layout-item:hover .btn-group {
+    opacity: 1;
+}
+
+.layout-item h6 {
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+.layout-item small {
+    font-size: 0.75rem;
+}
+
+/* Layout Manager Modal */
+#layoutsModal .modal-dialog {
+    max-width: 800px;
+}
+
+#layoutsModal .card {
+    border: 1px solid #dee2e6;
+    box-shadow: none;
+}
+
+#layoutsModal .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+}
+
+/* Layout Name Input */
+#layout-name-input {
+    border: 1px solid #ced4da;
+    transition: border-color 0.2s ease;
+}
+
+#layout-name-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Default Layout Badge */
+.badge.bg-primary {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Layout Buttons */
+.layout-item .btn-group .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Empty State */
+.text-muted {
+    color: #6c757d !important;
+    font-style: italic;
+} 
+
+/* Job Autocomplete Styles */
+.job-autocomplete {
+    position: relative;
+}
+
+.job-suggestions-dropdown {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 0 0 4px 4px;
+}
+
+.suggestion-item {
+    transition: background-color 0.2s ease;
+}
+
+.suggestion-item:hover {
+    background-color: #f8f9fa !important;
+}
+
+.suggestion-item strong {
+    color: #007bff;
+    font-weight: bold;
+}
+
+/* Ensure dropdown appears above other elements */
+.job-suggestions-dropdown {
+    z-index: 9999 !important;
 } 
