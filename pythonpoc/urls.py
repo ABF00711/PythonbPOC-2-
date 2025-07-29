@@ -21,6 +21,7 @@ from core.views import register, custom_login, profile, home, about, contact, dy
 from core.views import api_fields, api_options, api_create, api_record, api_update 
 from core.views import api_delete, api_gsearch, api_search
 from core.views import api_search_patterns, api_save_search_pattern, api_delete_search_pattern, api_reset_grid
+from core.views import api_grid_layouts, api_save_grid_layout, api_load_grid_layout, api_delete_grid_layout, api_set_default_layout
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -45,6 +46,12 @@ urlpatterns = [
     path('api/save-search-pattern/<str:table_name>/', api_save_search_pattern, name='api_save_search_pattern'),
     path('api/delete-search-pattern/<str:table_name>/', api_delete_search_pattern, name='api_delete_search_pattern'),
     path('api/reset-grid/<str:table_name>/', api_reset_grid, name='api_reset_grid'),
+    # Grid Layout APIs
+    path('api/layouts/<str:table_name>/', api_grid_layouts, name='api_grid_layouts'),
+    path('api/layouts/<str:table_name>/save/', api_save_grid_layout, name='api_save_grid_layout'),
+    path('api/layouts/<str:table_name>/<int:layout_id>/load/', api_load_grid_layout, name='api_load_grid_layout'),
+    path('api/layouts/<str:table_name>/<int:layout_id>/delete/', api_delete_grid_layout, name='api_delete_grid_layout'),
+    path('api/layouts/<str:table_name>/<int:layout_id>/set-default/', api_set_default_layout, name='api_set_default_layout'),
     path('<str:form_name>/', dynamic_grid, name='dynamic_grid'),
 ]
 

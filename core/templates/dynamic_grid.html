@@ -16,6 +16,7 @@
     <button class="btn btn-secondary mb-3 ms-2" id="search-grid-btn">Search</button>
     <button class="btn btn-warning mb-3 ms-2" id="reset-grid-btn" style="display: none;">Reset Grid</button>
     <button class="btn btn-info mb-3 ms-2" id="columns-btn">Columns</button>
+    <button class="btn btn-success mb-3 ms-2" id="layouts-btn">Layouts</button>
     <div class="table-responsive">
         <table class="table table-bordered table-hover" id="dynamic-grid-table">
             <thead class="table-light">
@@ -23,7 +24,19 @@
                     <th style="width:40px;" class="no-resize"><input type="checkbox" id="select-all-checkbox" title="Select all"></th>
                     {% for col in columns %}
                         <th class="resizable-column" data-column-name="{{ col.1 }}">
-                            <div class="header-content">{{ col.0 }}</div>
+                            <div class="header-content">
+                                <span class="column-title">{{ col.0 }}</span>
+                                <div class="sort-buttons">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-asc" 
+                                            data-column="{{ col.1 }}" title="Sort ascending">
+                                        <i class="bi bi-arrow-up"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-desc" 
+                                            data-column="{{ col.1 }}" title="Sort descending">
+                                        <i class="bi bi-arrow-down"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <div class="resize-handle"></div>
                         </th>
                     {% endfor %}
@@ -147,7 +160,7 @@
           <button type="button" class="btn btn-sm btn-outline-secondary" id="deselect-all-columns-btn">Deselect All</button>
         </div>
         <div id="column-visibility-fields">
-          <!-- Column checkboxes will be injected here by JS -->
+          <!-- Column checkboxes will be injected here -->
         </div>
       </div>
       <div class="modal-footer">
@@ -158,26 +171,106 @@
   </div>
 </div>
 
-            <!-- jQuery (required for Select2) -->
-            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-            <!-- Select2 CSS/JS for inputable dropdowns -->
-            <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-            <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-            <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-            <!-- Bootstrap JS -->
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            <!-- Dynamic Grid CSS -->
-            <link rel="stylesheet" href="{% static 'core/css/dynamic_grid.css' %}">
-            <!-- Column Resizer -->
-            <script src="{% static 'core/js/dynamic_grid/column-resizer.js' %}"></script>
-            <!-- Column Dragger -->
-            <script src="{% static 'core/js/dynamic_grid/column-dragger.js' %}"></script>
-            <!-- Column Visibility Manager -->
-            <script src="{% static 'core/js/dynamic_grid/column-visibility.js' %}"></script>
-            <!-- Modal logic (non-module, attaches to window) -->
-            <script src="{% static 'core/js/dynamic_grid/modal.js' %}"></script>
-            <!-- Main dynamic grid logic as a module -->
-            <script type="module" src="{% static 'core/js/dynamic_grid.js' %}"></script>
+<!-- Layout Manager Modal -->
+<div class="modal fade" id="layoutsModal" tabindex="-1" aria-labelledby="layoutsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="layoutsModalLabel">Layout Manager</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Save Current Layout Section -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h6 class="mb-0">Save Current Layout</h6>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <input type="text" class="form-control" id="layout-name-input" placeholder="Enter layout name">
+              </div>
+              <div class="col-md-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="set-as-default-checkbox">
+                  <label class="form-check-label" for="set-as-default-checkbox">
+                    Set as default
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="button" class="btn btn-primary" id="save-layout-btn">Save Layout</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Saved Layouts Section -->
+        <div class="card">
+          <div class="card-header">
+            <h6 class="mb-0">Saved Layouts</h6>
+          </div>
+          <div class="card-body">
+            <div id="saved-layouts-list">
+              <!-- Saved layouts will be injected here -->
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Layout Overwrite Confirmation Modal -->
+<div class="modal fade" id="layoutOverwriteModal" tabindex="-1" aria-labelledby="layoutOverwriteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="layoutOverwriteModalLabel">Layout Already Exists</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>A layout with the name "<span id="existing-layout-name"></span>" already exists. Do you want to update it?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirm-overwrite-btn">Update Layout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'core/css/dynamic_grid.css' %}">
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS Modules -->
+    <script type="module" src="{% static 'core/js/dynamic_grid/column-resizer.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/column-dragger.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/column-visibility.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/column-sorter.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/layout-manager.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/modal.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/grid.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/crud.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/utils.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid/search_patterns.js' %}"></script>
+    <script type="module" src="{% static 'core/js/dynamic_grid.js' %}"></script>
             <!-- Bootstrap Toast for notifications -->
             <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
               <div id="grid-toast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
