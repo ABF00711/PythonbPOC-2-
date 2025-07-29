@@ -14,7 +14,41 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
         label.innerHTML = field.label + (field.mandatory ? ' <span class="text-danger">*</span>' : '');
         wrapper.appendChild(label);
         let input;
-        if (['select', 'autocomplete', 'dropdown'].includes(field.type)) {
+        
+        // Special handling for job field - create autocomplete input
+        if (field.name.toLowerCase() === 'job') {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control job-autocomplete';
+            input.id = `field_${field.name}`;
+            input.name = field.name;
+            input.setAttribute('data-table', tableName);
+            input.setAttribute('data-field', field.name);
+            input.setAttribute('autocomplete', 'off');
+            wrapper.appendChild(input);
+            
+            // Create dropdown container for suggestions
+            const dropdownContainer = document.createElement('div');
+            dropdownContainer.className = 'job-suggestions-dropdown';
+            dropdownContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+            `;
+            wrapper.style.position = 'relative';
+            wrapper.appendChild(dropdownContainer);
+            
+            // Add autocomplete functionality
+            setupJobAutocomplete(input, dropdownContainer, tableName, field.name);
+        } else if (['select', 'autocomplete', 'dropdown'].includes(field.type)) {
             input = document.createElement('select');
             input.className = 'form-control inputable-dropdown';
             input.id = `field_${field.name}`;
@@ -52,7 +86,7 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
         wrapper.appendChild(errorDiv);
         formFieldsDiv.appendChild(wrapper);
     });
-    // Initialize Select2 for inputable dropdowns
+    // Initialize Select2 for inputable dropdowns (excluding job field)
     $(formFieldsDiv).find('.inputable-dropdown').each(function() {
         const $select = $(this);
         const field = $select.data('field');
@@ -79,6 +113,127 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
             dropdownParent: $('#createModal')
         });
     });
+}
+
+function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
+    let suggestions = [];
+    let selectedIndex = -1;
+    let isDropdownVisible = false;
+    
+    // Fetch existing jobs on focus
+    input.addEventListener('focus', async () => {
+        try {
+            const response = await fetch(`/api/options/${tableName}/${fieldName}/`);
+            const data = await response.json();
+            suggestions = data.options.map(option => option.text);
+        } catch (error) {
+            console.error('Error fetching job options:', error);
+            suggestions = [];
+        }
+    });
+    
+    // Handle input changes
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        if (query.length === 0) {
+            hideDropdown();
+            return;
+        }
+        
+        const filteredSuggestions = suggestions.filter(job => 
+            job.toLowerCase().includes(query)
+        );
+        
+        if (filteredSuggestions.length > 0) {
+            showDropdown(filteredSuggestions, query);
+        } else {
+            hideDropdown();
+        }
+    });
+    
+    // Handle keyboard navigation
+    input.addEventListener('keydown', (e) => {
+        if (!isDropdownVisible) return;
+        
+        const items = dropdownContainer.querySelectorAll('.suggestion-item');
+        
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection(items);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    selectSuggestion(items[selectedIndex].textContent);
+                }
+                break;
+            case 'Escape':
+                hideDropdown();
+                break;
+        }
+    });
+    
+    // Handle clicks outside to close dropdown
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdownContainer.contains(e.target)) {
+            hideDropdown();
+        }
+    });
+    
+    function showDropdown(suggestions, query) {
+        dropdownContainer.innerHTML = suggestions.map(suggestion => {
+            const highlightedSuggestion = suggestion.replace(
+                new RegExp(`(${query})`, 'gi'),
+                '<strong>$1</strong>'
+            );
+            return `<div class="suggestion-item p-2 border-bottom" style="cursor: pointer;">${highlightedSuggestion}</div>`;
+        }).join('');
+        
+        dropdownContainer.style.display = 'block';
+        isDropdownVisible = true;
+        selectedIndex = -1;
+        
+        // Add click handlers to suggestion items
+        dropdownContainer.querySelectorAll('.suggestion-item').forEach((item, index) => {
+            item.addEventListener('click', () => {
+                selectSuggestion(suggestions[index]);
+            });
+            
+            item.addEventListener('mouseenter', () => {
+                selectedIndex = index;
+                updateSelection(dropdownContainer.querySelectorAll('.suggestion-item'));
+            });
+        });
+    }
+    
+    function hideDropdown() {
+        dropdownContainer.style.display = 'none';
+        isDropdownVisible = false;
+        selectedIndex = -1;
+    }
+    
+    function updateSelection(items) {
+        items.forEach((item, index) => {
+            if (index === selectedIndex) {
+                item.style.backgroundColor = '#f8f9fa';
+            } else {
+                item.style.backgroundColor = 'white';
+            }
+        });
+    }
+    
+    function selectSuggestion(suggestion) {
+        input.value = suggestion;
+        hideDropdown();
+        input.focus();
+    }
 }
 
 function showEditModal(fields, rowData, tableName) {
@@ -108,61 +263,49 @@ function showEditModal(fields, rowData, tableName) {
         label.innerHTML = field.label + (field.mandatory ? ' <span class="text-danger">*</span>' : '');
         wrapper.appendChild(label);
         let input;
-        if (["select", "autocomplete", "dropdown"].includes(field.type)) {
-            // For edit mode, use a regular select instead of Select2 to avoid tag-like appearance
+        
+        // Special handling for job field - create autocomplete input
+        if (field.name.toLowerCase() === 'job') {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control job-autocomplete';
+            input.id = `edit_field_${field.name}`;
+            input.name = field.name;
+            input.setAttribute('data-table', tableName);
+            input.setAttribute('data-field', field.name);
+            input.setAttribute('autocomplete', 'off');
+            input.value = rowData[field.name] || '';
+            wrapper.appendChild(input);
+            
+            // Create dropdown container for suggestions
+            const dropdownContainer = document.createElement('div');
+            dropdownContainer.className = 'job-suggestions-dropdown';
+            dropdownContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+            `;
+            wrapper.style.position = 'relative';
+            wrapper.appendChild(dropdownContainer);
+            
+            // Add autocomplete functionality
+            setupJobAutocomplete(input, dropdownContainer, tableName, field.name);
+        } else if (["select", "autocomplete", "dropdown"].includes(field.type)) {
             input = document.createElement('select');
-            input.className = 'form-control';
+            input.className = 'form-control inputable-dropdown';
             input.id = `edit_field_${field.name}`;
             input.name = field.name;
             input.setAttribute('data-lookup', '1');
             input.setAttribute('data-table', tableName);
             input.setAttribute('data-field', field.name);
-            
-            // Add placeholder option
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = 'Select or type to add';
-            input.appendChild(placeholderOption);
-            
-            // Load options and set value
-            fetch(`/api/options/${tableName}/${field.name}/`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.options) {
-                        data.options.forEach(opt => {
-                            const option = document.createElement('option');
-                            option.value = opt.text;
-                            option.textContent = opt.text;
-                            input.appendChild(option);
-                        });
-                    }
-                    
-                    // Set the existing value
-                    const existingValue = rowData[field.name];
-                    if (existingValue) {
-                        // Add the existing value if it's not in the options
-                        if (!data.options.some(opt => opt.text === existingValue)) {
-                            const option = document.createElement('option');
-                            option.value = existingValue;
-                            option.textContent = existingValue;
-                            input.appendChild(option);
-                        }
-                        input.value = existingValue;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading options:', error);
-                    // Set the existing value even if options fail to load
-                    const existingValue = rowData[field.name];
-                    if (existingValue) {
-                        const option = document.createElement('option');
-                        option.value = existingValue;
-                        option.textContent = existingValue;
-                        input.appendChild(option);
-                        input.value = existingValue;
-                    }
-                });
-            
             wrapper.appendChild(input);
         } else if (field.type === 'date') {
             input = document.createElement('input');
@@ -197,10 +340,44 @@ function showEditModal(fields, rowData, tableName) {
         wrapper.appendChild(errorDiv);
         editFormFieldsDiv.appendChild(wrapper);
     });
-    
-    // Note: We're not using Select2 for edit mode to avoid tag-like appearance
-    // Regular HTML selects are used instead
-    
+    // Initialize Select2 for inputable dropdowns (excluding job field)
+    $(editFormFieldsDiv).find('.inputable-dropdown').each(function() {
+        const $select = $(this);
+        const field = $select.data('field');
+        const table = $select.data('table');
+        $select.prop('disabled', false);
+        $select.select2({
+            theme: 'bootstrap-5',
+            tags: true,
+            width: '100%',
+            ajax: {
+                url: `/api/options/${table}/${field}/`,
+                dataType: 'json',
+                processResults: function(data) {
+                    return { results: data.options.map(function(option) { return { id: option.text, text: option.text }; }) };
+                }
+            },
+            placeholder: 'Select or type to add',
+            allowClear: true,
+            createTag: function (params) {
+                var term = $.trim(params.term);
+                if (term === '') { return null; }
+                return { id: term, text: term, newTag: true };
+            },
+            dropdownParent: $('#editModal')
+        });
+    });
+    // Pre-fill dropdowns after Select2 is initialized
+    setTimeout(() => {
+        fields.forEach(field => {
+            if (["select", "autocomplete", "dropdown"].includes(field.type) && field.name.toLowerCase() !== 'job') {
+                const $select = $(editFormFieldsDiv).find(`[name="${field.name}"]`);
+                if ($select.length && rowData[field.name]) {
+                    $select.append(new Option(rowData[field.name], rowData[field.name], true, true)).trigger('change');
+                }
+            }
+        });
+    }, 300);
     // Set record id on modal for later use
     editModal.setAttribute('data-record-id', rowData.id);
     // Show modal
@@ -382,4 +559,4 @@ window.renderFormFields = renderFormFields;
 window.showEditModal = showEditModal;
 window.renderSearchFields = renderSearchFields;
 window.generateSearchInput = generateSearchInput;
-// Add more modal-related exports as needed 
+// Add more modal-related exports as needed
