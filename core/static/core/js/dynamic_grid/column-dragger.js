@@ -429,7 +429,10 @@ class ColumnDragger {
         const rows = tbody.querySelectorAll('tr');
         rows.forEach(row => {
             const cells = Array.from(row.querySelectorAll('td'));
-            const dataCells = cells.slice(1); // Skip checkbox column
+            if (cells.length === 0) return;
+            
+            const checkboxCell = cells[0]; // Keep checkbox cell at the beginning
+            const dataCells = cells.slice(1); // Data cells
             
             const cellMap = {};
             currentHeaders.forEach((header, index) => {
@@ -438,6 +441,11 @@ class ColumnDragger {
                 }
             });
 
+            // Clear the row and add checkbox cell back first
+            row.innerHTML = '';
+            row.appendChild(checkboxCell);
+            
+            // Add data cells in the correct order
             columnOrder.forEach(columnName => {
                 if (cellMap[columnName]) {
                     const cell = cellMap[columnName];
@@ -450,6 +458,10 @@ class ColumnDragger {
     resetColumnOrder() {
         const storageKey = `grid_column_order_${this.tableName}`;
         localStorage.removeItem(storageKey);
+        
+        // Force a grid refresh to reset to default order
+        // This will be handled by the main reset function calling updateGrid
+        // which will re-render the grid with the default column order from the server
     }
 
     onTableChange(newTableName) {
@@ -462,7 +474,7 @@ class ColumnDragger {
     applyColumnOrderWithDelay() {
         setTimeout(() => {
             this.loadSavedColumnOrder();
-        }, 100);
+        }, 200);
     }
 }
 

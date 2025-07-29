@@ -323,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const data = await searchRecords(tableName, searchData);
             if (data && data.data) {
-                updateGrid(data.columns, data.data, data.total_count);
+                updateGrid(tableName, data.data, data.columns);
                 showToast('Search complete', 'success');
                 attachGridEventHandlers(tableName, fieldConfigs);
                 
@@ -353,31 +353,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Fetch original data from the API
                 const data = await resetGrid(tableName);
                 if (data && data.data) {
+                    // Update grid with original data
+                    updateGrid(tableName, data.data, data.columns);
+                    // Hide reset button
+                    resetGridBtn.style.display = 'none';
                     
-                                    // Update grid with original data
-                updateGrid(data.columns, data.data, data.total_count);
-                
-                // Reset column widths
-                if (window.columnResizer) {
-                    window.columnResizer.resetColumnWidths();
-                }
-                
-                // Reset column order
-                if (window.columnDragger) {
-                    window.columnDragger.resetColumnOrder();
-                }
-                
-                // Reset column visibility
-                if (window.columnVisibilityManager) {
-                    window.columnVisibilityManager.resetVisibleColumns();
-                }
-                
-                // Hide reset button
-                resetGridBtn.style.display = 'none';
-                
-                // Re-attach event handlers
-                attachGridEventHandlers(tableName, fieldConfigs);
-                    
+                    // Re-attach event handlers
+                    attachGridEventHandlers(tableName, fieldConfigs);
+                        
                     showToast('Grid reset to original data', 'success');
                 } else {
                     throw new Error('Failed to fetch original data');
