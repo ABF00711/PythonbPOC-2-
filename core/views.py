@@ -613,7 +613,7 @@ def api_reset_grid(request, table_name):
     cursor.execute("SELECT field_label, field_name FROM search_config WHERE table_name = %s", [table_name])
     columns_config = cursor.fetchall()
     
-    # Build select_fields and columns
+    # Build select_fields and columns in the order of select_fields_raw, using field_name for SQL and field_label for header
     select_fields = []
     columns = []
     for field in select_fields_raw:
@@ -625,7 +625,7 @@ def api_reset_grid(request, table_name):
                 columns.append((label, name))
                 break
     
-    # Always keep ID in the SQL query
+    # Always keep ID in the SQL query for backend use
     sql_fields = [f.strip() for f in form_row[2].split(',')]
     
     # Handle job field - join with job table to get job name

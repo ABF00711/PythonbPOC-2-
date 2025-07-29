@@ -44,9 +44,6 @@ export function updateGrid(tableName, data, columns) {
         `).join('') : 
         `<tr><td colspan="${columns.length + 1}" class="text-center">No data found.</td></tr>`;
 
-    // Re-attach event handlers
-    attachGridEventHandlers(tableName, columns);
-
     // Re-initialize column functionality
     if (window.columnResizer) {
         window.columnResizer.attachEventListeners();
@@ -55,7 +52,7 @@ export function updateGrid(tableName, data, columns) {
 
     if (window.columnDragger) {
         window.columnDragger.attachEventListeners();
-        window.columnDragger.applyColumnOrderWithDelay();
+        // Column order is handled by columnVisibilityManager.applyVisibilityAfterGridUpdate()
     }
 
     if (window.columnVisibilityManager) {

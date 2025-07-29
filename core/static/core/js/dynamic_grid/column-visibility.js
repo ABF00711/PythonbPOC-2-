@@ -231,9 +231,21 @@ class ColumnVisibilityManager {
         }
     }
 
-    resetVisibleColumns() {
+    async resetVisibleColumns() {
         const storageKey = `grid_visible_columns_${this.tableName}`;
         localStorage.removeItem(storageKey);
+        
+        // If field configs are not loaded, fetch them
+        if (this.fieldConfigs.length === 0) {
+            try {
+                const response = await fetch(`/api/fields/${this.tableName}/`);
+                const data = await response.json();
+                this.fieldConfigs = data.fields;
+            } catch (error) {
+                console.warn('Failed to fetch field configs for reset:', error);
+                return;
+            }
+        }
         
         // Set all columns as visible
         this.visibleColumns = new Set();
