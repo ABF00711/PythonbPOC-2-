@@ -120,18 +120,35 @@ document.addEventListener('DOMContentLoaded', function() {
             const modal = form.closest('.modal');
             const recordId = modal && modal.getAttribute('data-record-id');
             if (!recordId) return;
+            
+            // Ensure fieldConfigs is loaded
+            let currentFieldConfigs = fieldConfigs;
+            if (!currentFieldConfigs || currentFieldConfigs.length === 0) {
+                try {
+                    const response = await fetch(`/api/fields/${tableName}/`);
+                    const data = await response.json();
+                    currentFieldConfigs = data.fields;
+                    fieldConfigs = currentFieldConfigs; // Update the global variable
+                } catch (error) {
+                    console.error('Error fetching field configs for edit:', error);
+                    showToast('Error loading form fields. Please try again.', 'error');
+                    return;
+                }
+            }
+            
             // Clear previous errors
-            fieldConfigs.forEach(f => {
+            currentFieldConfigs.forEach(f => {
                 const err = form.querySelector(`#edit_error_${f.name}`);
                 if (err) err.textContent = '';
                 const input = form.querySelector(`[name="${f.name}"]`);
                 if (input) input.classList.remove('is-invalid');
             });
+            
             // Collect form data and validate mandatory fields
             const formData = {};
             let firstInvalid = null;
             let hasError = false;
-            fieldConfigs.forEach(f => {
+            currentFieldConfigs.forEach(f => {
                 if (f.name.toLowerCase() === 'id') return;
                 const input = form.querySelector(`[name="${f.name}"]`);
                 let val = input ? input.value : '';
@@ -146,10 +163,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 formData[f.name] = val;
             });
+            
             if (hasError) {
                 if (firstInvalid) firstInvalid.focus();
                 return;
             }
+            
             const data = await updateRecord(tableName, recordId, formData);
             if (data.success) {
                 bootstrap.Modal.getInstance(modal).hide();
@@ -400,8 +419,121 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
+
+    // Initialize default column states for first-time users after a delay
+    // to ensure DOM is fully loaded and column managers are initialized
+    setTimeout(() => {
+        initializeDefaultColumnStates(tableName);
+    }, 500);
+    
+    // Also try again after a longer delay as a fallback
+    setTimeout(() => {
+        initializeDefaultColumnStates(tableName);
+    }, 2000);
 }); 
 
+// Function to initialize default column states for first-time users
+async function initializeDefaultColumnStates(tableName) {
+    try {
+        console.log('Checking for default column states for table:', tableName);
+        
+        // Check if any column state exists for this table
+        const visibilityKey = `grid_visible_columns_${tableName}`;
+        const orderKey = `grid_column_order_${tableName}`;
+        const widthsKey = `grid_column_widths_${tableName}`;
+        
+        const hasVisibilityState = localStorage.getItem(visibilityKey);
+        const hasOrderState = localStorage.getItem(orderKey);
+        const hasWidthsState = localStorage.getItem(widthsKey);
+        
+        console.log('Existing states:', {
+            visibility: !!hasVisibilityState,
+            order: !!hasOrderState,
+            widths: !!hasWidthsState
+        });
+        
+        // If no states exist, initialize defaults
+        if (!hasVisibilityState || !hasOrderState || !hasWidthsState) {
+            console.log('Initializing default column states for first-time user...');
+            
+            // Fetch field configurations to get column information
+            const response = await fetch(`/api/fields/${tableName}/`);
+            const data = await response.json();
+            const fields = data.fields;
+            
+            console.log('Fetched fields:', fields.length);
+            
+            // Initialize default visibility (all columns visible)
+            if (!hasVisibilityState) {
+                const defaultVisibleColumns = fields.map(field => field.name);
+                localStorage.setItem(visibilityKey, JSON.stringify(defaultVisibleColumns));
+                console.log('Default visibility state saved:', defaultVisibleColumns);
+            }
+            
+            // Initialize default column order (current order from DOM)
+            if (!hasOrderState) {
+                const currentHeaders = document.querySelectorAll('.resizable-column');
+                console.log('Found headers:', currentHeaders.length);
+                
+                if (currentHeaders.length > 0) {
+                    const defaultColumnOrder = Array.from(currentHeaders).map(h => h.dataset.columnName);
+                    localStorage.setItem(orderKey, JSON.stringify(defaultColumnOrder));
+                    console.log('Default column order saved:', defaultColumnOrder);
+                } else {
+                    console.warn('No resizable columns found in DOM, will retry...');
+                    // Retry after a short delay
+                    setTimeout(() => {
+                        const retryHeaders = document.querySelectorAll('.resizable-column');
+                        if (retryHeaders.length > 0) {
+                            const retryColumnOrder = Array.from(retryHeaders).map(h => h.dataset.columnName);
+                            localStorage.setItem(orderKey, JSON.stringify(retryColumnOrder));
+                            console.log('Default column order saved on retry:', retryColumnOrder);
+                        }
+                    }, 1000);
+                }
+            }
+            
+            // Initialize default column widths (current widths from DOM)
+            if (!hasWidthsState) {
+                const currentHeaders = document.querySelectorAll('.resizable-column');
+                console.log('Found headers for widths:', currentHeaders.length);
+                
+                if (currentHeaders.length > 0) {
+                    const defaultColumnWidths = {};
+                    currentHeaders.forEach(header => {
+                        const columnName = header.dataset.columnName;
+                        const width = header.offsetWidth;
+                        defaultColumnWidths[columnName] = width;
+                    });
+                    localStorage.setItem(widthsKey, JSON.stringify(defaultColumnWidths));
+                    console.log('Default column widths saved:', defaultColumnWidths);
+                } else {
+                    console.warn('No resizable columns found for width initialization, will retry...');
+                    // Retry after a short delay
+                    setTimeout(() => {
+                        const retryHeaders = document.querySelectorAll('.resizable-column');
+                        if (retryHeaders.length > 0) {
+                            const retryColumnWidths = {};
+                            retryHeaders.forEach(header => {
+                                const columnName = header.dataset.columnName;
+                                const width = header.offsetWidth;
+                                retryColumnWidths[columnName] = width;
+                            });
+                            localStorage.setItem(widthsKey, JSON.stringify(retryColumnWidths));
+                            console.log('Default column widths saved on retry:', retryColumnWidths);
+                        }
+                    }, 1000);
+                }
+            }
+            
+            console.log('Default column states initialization completed');
+        } else {
+            console.log('Column states already exist, skipping initialization');
+        }
+    } catch (error) {
+        console.error('Error initializing default column states:', error);
+    }
+}
 // --- Helper to re-attach row and checkbox handlers after grid update ---
 function attachGridEventHandlers(tableName, fieldConfigs) {
     const table = document.querySelector('table.table');

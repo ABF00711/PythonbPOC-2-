@@ -8,13 +8,15 @@ class ColumnVisibilityManager {
         this.tableName = '';
         this.fieldConfigs = [];
         this.visibleColumns = new Set();
-        this.init();
+        this.init().catch(error => {
+            console.error('Error initializing ColumnVisibilityManager:', error);
+        });
     }
 
-    init() {
+    async init() {
         this.tableName = document.querySelector('[data-table-name]')?.dataset.tableName || 'default';
         this.attachEventListeners();
-        this.loadVisibleColumns();
+        await this.loadVisibleColumns();
     }
 
     attachEventListeners() {
@@ -203,7 +205,7 @@ class ColumnVisibilityManager {
         localStorage.setItem(storageKey, JSON.stringify(Array.from(this.visibleColumns)));
     }
 
-    loadVisibleColumns() {
+    async loadVisibleColumns() {
         const storageKey = `grid_visible_columns_${this.tableName}`;
         const savedColumns = localStorage.getItem(storageKey);
         
@@ -212,18 +214,33 @@ class ColumnVisibilityManager {
                 this.visibleColumns = new Set(JSON.parse(savedColumns));
             } catch (error) {
                 console.warn('Failed to load visible columns:', error);
-                this.setDefaultVisibleColumns();
+                await this.setDefaultVisibleColumns();
+                this.saveVisibleColumns(); // Save default state
             }
         } else {
-            this.setDefaultVisibleColumns();
+            // No saved state exists - set defaults and save them
+            await this.setDefaultVisibleColumns();
+            this.saveVisibleColumns(); // Save default state for first-time users
         }
     }
 
-    setDefaultVisibleColumns() {
+    async setDefaultVisibleColumns() {
         // Set all columns as visible by default
         this.visibleColumns = new Set();
         
-        // If we have field configs, set all as visible
+        // If we don't have field configs, try to fetch them
+        if (this.fieldConfigs.length === 0) {
+            try {
+                const response = await fetch(`/api/fields/${this.tableName}/`);
+                const data = await response.json();
+                this.fieldConfigs = data.fields;
+            } catch (error) {
+                console.warn('Failed to fetch field configs for default state:', error);
+                return;
+            }
+        }
+        
+        // Set all columns as visible
         if (this.fieldConfigs.length > 0) {
             this.fieldConfigs.forEach(field => {
                 this.visibleColumns.add(field.name);

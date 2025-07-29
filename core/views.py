@@ -315,7 +315,16 @@ def api_record(request, table_name, record_id):
 @login_required
 def api_update(request, table_name, record_id):
     """Update a record in table_name by ID. Only updates fields defined in search_config."""
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+        print(f"api_update: table={table_name}, record_id={record_id}, data={data}")
+    except json.JSONDecodeError as e:
+        print(f"api_update: JSON decode error: {e}")
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        print(f"api_update: Error parsing request body: {e}")
+        return JsonResponse({'error': 'Invalid request data'}, status=400)
+    
     cursor = connection.cursor()
     
     try:
@@ -342,20 +351,31 @@ def api_update(request, table_name, record_id):
         # Get field names from search_config
         cursor.execute("SELECT field_name FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
         fields = [row[0] for row in cursor.fetchall()]
+        print(f"api_update: Available fields: {fields}")
+        
         if not fields:
             return JsonResponse({'error': 'No fields found.'}, status=404)
+        
         # Remove 'id' from updatable fields
         updatable_fields = [f for f in fields if f != 'id']
         set_clauses = []
         values = []
+        
         for field in updatable_fields:
             if field in data:
                 set_clauses.append(f"{field} = %s")
                 values.append(data[field] if data[field] != '' else None)
+        
+        print(f"api_update: Set clauses: {set_clauses}")
+        print(f"api_update: Values: {values}")
+        
         if not set_clauses:
             return JsonResponse({'error': 'No fields to update.'}, status=400)
+        
         values.append(record_id)
         sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = %s"
+        print(f"api_update: SQL: {sql}")
+        
         cursor.execute(sql, values)
         
         # Commit transaction
@@ -366,6 +386,7 @@ def api_update(request, table_name, record_id):
     except Exception as e:
         # Rollback transaction on error
         cursor.execute("ROLLBACK")
+        print(f"api_update: Database error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 @require_POST

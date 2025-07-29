@@ -55,3 +55,17 @@
 </div> 
 
 <link rel="stylesheet" href="../static/core/css/profile.css">
+<script>
+    // Auto-focus on the first input field when profile modal opens
+    document.addEventListener('DOMContentLoaded', function() {
+        const profileModal = document.getElementById('profileModal');
+        if (profileModal) {
+            profileModal.addEventListener('shown.bs.modal', function() {
+                const firstInput = this.querySelector('input[type="text"], input[type="email"]');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            });
+        }
+    });
+</script>
