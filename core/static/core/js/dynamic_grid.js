@@ -12,7 +12,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const modal = new bootstrap.Modal(document.getElementById('createModal'));
     const formFieldsDiv = document.getElementById('dynamic-form-fields');
     const form = document.getElementById('dynamic-create-form');
-    const tableName = document.querySelector('.container[data-table-name]').dataset.tableName;
+    
+    // Get table name with proper error handling
+    const tableNameElement = document.querySelector('.dynamic-grid-wrapper[data-table-name]');
+    if (!tableNameElement) {
+        console.error('Table name element not found');
+        return;
+    }
+    const tableName = tableNameElement.dataset.tableName;
+    if (!tableName) {
+        console.error('Table name not found in data attribute');
+        return;
+    }
+    
     let fieldConfigs = [];
     
     // Initialize search pattern manager (will be initialized when search modal is shown)

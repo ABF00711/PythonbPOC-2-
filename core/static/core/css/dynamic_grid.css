@@ -1,5 +1,76 @@
 /* dynamic_grid.css */
 
+/* Scrollable Grid Layout */
+.dynamic-grid-wrapper {
+    padding: 1rem;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    margin-top: 80px;
+}
+
+.grid-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1000;
+    padding: 1rem 0;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.grid-container {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: white;
+}
+
+.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sticky-header th {
+    background: #f8f9fa !important;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Ensure table takes full width in scrollable container */
+.grid-container .table-responsive {
+    height: 100%;
+}
+
+.grid-container table {
+    margin-bottom: 0;
+}
+
+.grid-container tbody {
+    background: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dynamic-grid-wrapper {
+        height: calc(100vh - 150px);
+        padding: 0.5rem;
+    }
+    
+    .action-buttons {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .action-buttons .btn {
+        margin-left: 0 !important;
+    }
+}
+
 .text-danger {
     color: #dc3545 !important;
 }
