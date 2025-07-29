@@ -6,32 +6,32 @@
 {% if error %}
 <div class="alert alert-danger">{{ error }}</div>
 {% else %}
-<div class="dynamic-grid-wrapper" data-table-name="{{ table_name }}">
+<div class="dynamic-grid-wrapper shadow rounded-4" data-table-name="{{ table_name }}">
     <!-- Fixed Header Section -->
-    <div class="grid-header">
+    <div class="grid-header rounded-top-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">{{ form_name|title }} ({{ table_name }})</h2>
             <span class="badge bg-secondary fs-5">Total: {{ total_count }}</span>
         </div>
-        <div class="action-buttons mb-3">
-            <button class="btn btn-primary" id="add-record-btn">Add</button>
-            <button class="btn btn-danger ms-2" id="delete-selected-btn" disabled>Delete Selected</button>
-            <button class="btn btn-secondary ms-2" id="search-grid-btn">Search</button>
-            <button class="btn btn-warning ms-2" id="reset-grid-btn" style="display: none;">Reset Grid</button>
-            <button class="btn btn-info ms-2" id="columns-btn">Columns</button>
-            <button class="btn btn-success ms-2" id="layouts-btn">Layouts</button>
+        <div class="action-buttons mb-3 btn-group" role="group">
+            <button class="btn btn-primary d-flex align-items-center" id="add-record-btn"><i class="bi bi-plus-lg me-1"></i> Add</button>
+            <button class="btn btn-danger d-flex align-items-center ms-2" id="delete-selected-btn" disabled><i class="bi bi-trash me-1"></i> Delete Selected</button>
+            <button class="btn btn-secondary d-flex align-items-center ms-2" id="search-grid-btn"><i class="bi bi-search me-1"></i> Search</button>
+            <button class="btn btn-warning d-flex align-items-center ms-2" id="reset-grid-btn" style="display: none;"><i class="bi bi-arrow-counterclockwise me-1"></i> Reset Grid</button>
+            <button class="btn btn-info d-flex align-items-center ms-2" id="columns-btn"><i class="bi bi-layout-three-columns me-1"></i> Columns</button>
+            <button class="btn btn-success d-flex align-items-center ms-2" id="layouts-btn"><i class="bi bi-layout-text-window-reverse me-1"></i> Layouts</button>
         </div>
     </div>
     
     <!-- Scrollable Grid Container -->
     <div class="grid-container">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover" id="dynamic-grid-table">
+            <table class="table table-bordered table-hover table-striped" id="dynamic-grid-table">
                 <thead class="table-light sticky-header">
-                    <tr>
-                        <th style="width:40px;" class="no-resize"><input type="checkbox" id="select-all-checkbox" title="Select all"></th>
+                    <tr class="align-middle">
+                        <th style="width:40px;" class="no-resize align-middle"><input type="checkbox" id="select-all-checkbox" title="Select all"></th>
                         {% for col in columns %}
-                            <th class="resizable-column" data-column-name="{{ col.1 }}">
+                            <th class="resizable-column align-middle" data-column-name="{{ col.1 }}">
                                 <div class="header-content">
                                     <span class="column-title">{{ col.0 }}</span>
                                     <div class="sort-buttons">
@@ -52,10 +52,10 @@
                 </thead>
                 <tbody>
                     {% for row in data %}
-                        <tr data-record-id="{{ row|get_item:'id' }}">
-                            <td><input type="checkbox" class="row-select-checkbox"></td>
+                        <tr data-record-id="{{ row|get_item:'id' }}" class="align-middle">
+                            <td class="align-middle"><input type="checkbox" class="row-select-checkbox"></td>
                             {% for col in columns %}
-                                <td>{{ row|get_item:col.1|default_if_none:"" }}</td>
+                                <td class="align-middle">{{ row|get_item:col.1|default_if_none:"" }}</td>
                             {% endfor %}
                         </tr>
                     {% empty %}

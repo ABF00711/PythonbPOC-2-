@@ -7,17 +7,23 @@
     display: flex;
     flex-direction: column;
     margin-top: 80px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+    border-radius: 1.5rem;
+    background: #fff;
 }
 
 .grid-header {
     position: sticky;
     top: 0;
-    background: white;
+    background: linear-gradient(90deg, #f8f9fa 60%, #e9ecef 100%);
     z-index: 1000;
     padding: 1rem 0;
     border-bottom: 2px solid #e9ecef;
     margin-bottom: 0;
     flex-shrink: 0;
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .grid-container {
@@ -39,6 +45,8 @@
 .sticky-header th {
     background: #f8f9fa !important;
     border-bottom: 2px solid #dee2e6;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
 }
 
 /* Ensure table takes full width in scrollable container */
@@ -229,6 +237,8 @@ body.dragging * {
 #dynamic-grid-table {
     width: 100%;
     border-collapse: collapse;
+    border-radius: 1.25rem;
+    overflow: hidden;
 }
 
 #dynamic-grid-table th,
@@ -306,6 +316,7 @@ body.dragging * {
 
 /* Responsive table */
 .table-responsive {
+    border-radius: 1.25rem;
     overflow-x: auto;
 }
 
@@ -315,7 +326,24 @@ body.dragging * {
 }
 
 .btn-group .btn {
-    margin-right: 5px;
+    min-width: 120px;
+    font-size: 1rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-group .btn:last-child {
+    margin-right: 0;
+}
+
+.btn:focus, .btn:active, .sort-btn:focus, .sort-btn:active {
+    outline: 2px solid #007bff !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
 }
 
 /* Modal styles */
