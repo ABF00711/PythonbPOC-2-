@@ -592,6 +592,165 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
     searchFieldsContainer.appendChild(sortFieldsDiv);
 }
 
+// --- GSearch Autocomplete (like job field) ---
+function setupGSearchAutocomplete(input, dropdownContainer, tableName, fieldName) {
+    let suggestions = [];
+    let selectedIndex = -1;
+    let isDropdownVisible = false;
+
+    // Fetch existing values on focus
+    input.addEventListener('focus', async () => {
+        if (!tableName || !fieldName) {
+            console.warn('GSearch: Missing tableName or fieldName', { tableName, fieldName });
+            suggestions = [];
+            return;
+        }
+        try {
+            const response = await fetch(`/api/gsearch/${tableName}/${fieldName}/`);
+            const data = await response.json();
+            suggestions = data.options.map(option => option.text);
+        } catch (error) {
+            console.error('Error fetching GSearch options:', error);
+            suggestions = [];
+        }
+    });
+
+    // Handle input changes
+    input.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        if (query.length === 0) {
+            hideDropdown();
+            return;
+        }
+        const filteredSuggestions = suggestions.filter(val => val.toLowerCase().includes(query));
+        if (filteredSuggestions.length > 0) {
+            showDropdown(filteredSuggestions, query);
+        } else {
+            hideDropdown();
+        }
+    });
+
+    // Handle keyboard navigation
+    input.addEventListener('keydown', (e) => {
+        if (!isDropdownVisible) return;
+        const items = dropdownContainer.querySelectorAll('.suggestion-item');
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection(items);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0 && items[selectedIndex]) {
+                    selectSuggestion(items[selectedIndex].textContent);
+                }
+                break;
+            case 'Escape':
+                hideDropdown();
+                break;
+        }
+    });
+
+    // Handle clicks outside to close dropdown
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdownContainer.contains(e.target)) {
+            hideDropdown();
+        }
+    });
+
+    function showDropdown(suggestions, query) {
+        dropdownContainer.innerHTML = suggestions.map(suggestion => {
+            const highlightedSuggestion = suggestion.replace(
+                new RegExp(`(${query})`, 'gi'),
+                '<strong>$1</strong>'
+            );
+            return `<div class="suggestion-item p-2 border-bottom" style="cursor: pointer;">${highlightedSuggestion}</div>`;
+        }).join('');
+        dropdownContainer.style.display = 'block';
+        isDropdownVisible = true;
+        selectedIndex = -1;
+        dropdownContainer.querySelectorAll('.suggestion-item').forEach((item, index) => {
+            item.addEventListener('click', () => {
+                selectSuggestion(suggestions[index]);
+            });
+            item.addEventListener('mouseenter', () => {
+                selectedIndex = index;
+                updateSelection(dropdownContainer.querySelectorAll('.suggestion-item'));
+            });
+        });
+    }
+    function hideDropdown() {
+        dropdownContainer.style.display = 'none';
+        isDropdownVisible = false;
+        selectedIndex = -1;
+    }
+    function updateSelection(items) {
+        items.forEach((item, index) => {
+            item.style.backgroundColor = (index === selectedIndex) ? '#f8f9fa' : 'white';
+        });
+    }
+    function selectSuggestion(suggestion) {
+        input.value = suggestion;
+        hideDropdown();
+        input.focus();
+    }
+}
+
+// --- Patch GSearch operator logic in search modal ---
+// (Replace Select2 with plain input + autocomplete)
+
+// Patch inside renderSearchFields or after its call
+// (Assume renderSearchFields is called after modal is shown)
+document.getElementById('searchModal')?.addEventListener('shown.bs.modal', function() {
+    // For each text field with GSearch operator, ensure plain input with autocomplete
+    document.querySelectorAll('#searchModal .row.mb-3[data-field]').forEach(fieldRow => {
+        const operatorSelect = fieldRow.querySelector('.operator-select');
+        if (!operatorSelect) return;
+        const fieldName = fieldRow.getAttribute('data-field');
+        const tableName = document.getElementById('searchModal').getAttribute('data-table');
+        // Only for text fields (by structure)
+        operatorSelect.addEventListener('change', function() {
+            const inputCol = fieldRow.querySelector('.col-md-6');
+            if (operatorSelect.value === 'GSearch') {
+                // Replace with plain input and autocomplete
+                inputCol.innerHTML = '';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control search-input';
+                input.setAttribute('data-field', fieldName);
+                input.setAttribute('placeholder', `Type to search ${fieldName}`);
+                inputCol.appendChild(input);
+                // Dropdown for suggestions
+                const dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'gsearch-suggestions-dropdown';
+                dropdownContainer.style.cssText = `position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; display: none;`;
+                inputCol.style.position = 'relative';
+                inputCol.appendChild(dropdownContainer);
+                setupGSearchAutocomplete(input, dropdownContainer, tableName, fieldName);
+            } else {
+                // Reset to normal text input
+                inputCol.innerHTML = '';
+                const textInput = document.createElement('input');
+                textInput.type = 'text';
+                textInput.className = 'form-control search-input';
+                textInput.setAttribute('data-field', fieldName);
+                textInput.setAttribute('placeholder', `Enter ${fieldName}`);
+                inputCol.appendChild(textInput);
+            }
+        });
+        // If GSearch is already selected on modal open, trigger change to reset field
+        if (operatorSelect.value === 'GSearch') {
+            operatorSelect.dispatchEvent(new Event('change'));
+        }
+    });
+});
+
 window.renderFormFields = renderFormFields;
 window.showEditModal = showEditModal;
 window.renderSearchFields = renderSearchFields;
