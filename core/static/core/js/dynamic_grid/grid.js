@@ -1,90 +1,68 @@
 // grid.js
 // Handles rendering and updating the grid table
 
-export function updateGrid(columns, data, totalCount) {
-    const table = document.querySelector('table.table');
+export function updateGrid(tableName, data, columns) {
+    const table = document.querySelector('#dynamic-grid-table');
     if (!table) return;
+
+    // Update table headers
     const thead = table.querySelector('thead tr');
+    thead.innerHTML = `
+        <th style="width:40px;" class="no-resize">
+            <input type="checkbox" id="select-all-checkbox" title="Select all">
+        </th>
+        ${columns.map(col => `
+            <th class="resizable-column" data-column-name="${col[1]}">
+                <div class="header-content">
+                    <span class="column-title">${col[0]}</span>
+                    <div class="sort-buttons">
+                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-asc" 
+                                data-column="${col[1]}" title="Sort ascending">
+                            <i class="bi bi-arrow-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-desc" 
+                                data-column="${col[1]}" title="Sort descending">
+                            <i class="bi bi-arrow-down"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="resize-handle"></div>
+            </th>
+        `).join('')}
+    `;
+
+    // Update table body
     const tbody = table.querySelector('tbody');
-    if (!thead || !tbody) return;
+    tbody.innerHTML = data.length > 0 ? 
+        data.map(row => `
+            <tr data-record-id="${row.id || ''}">
+                <td><input type="checkbox" class="row-select-checkbox"></td>
+                ${columns.map(col => `
+                    <td>${row[col[1]] || ''}</td>
+                `).join('')}
+            </tr>
+        `).join('') : 
+        `<tr><td colspan="${columns.length + 1}" class="text-center">No data found.</td></tr>`;
 
-    // Remove all header cells
-    while (thead.firstChild) thead.removeChild(thead.firstChild);
+    // Re-attach event handlers
+    attachGridEventHandlers(tableName, columns);
 
-    // Add checkbox header
-    const thCheckbox = document.createElement('th');
-    thCheckbox.style.width = '40px';
-    thCheckbox.className = 'no-resize';
-    const selectAll = document.createElement('input');
-    selectAll.type = 'checkbox';
-    selectAll.id = 'select-all-checkbox';
-    selectAll.title = 'Select all';
-    thCheckbox.appendChild(selectAll);
-    thead.appendChild(thCheckbox);
-
-    // Add new header cells with resizable structure
-    columns.forEach(col => {
-        const th = document.createElement('th');
-        th.className = 'resizable-column';
-        th.setAttribute('data-column-name', col[1]);
-        
-        const headerContent = document.createElement('div');
-        headerContent.className = 'header-content';
-        headerContent.textContent = col[0];
-        
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'resize-handle';
-        
-        th.appendChild(headerContent);
-        th.appendChild(resizeHandle);
-        thead.appendChild(th);
-    });
-
-    // Remove all body rows
-    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
-
-    // Add new rows
-    data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-record-id', row.id || '');
-
-        // Checkbox cell
-        const tdCheckbox = document.createElement('td');
-        const rowCheckbox = document.createElement('input');
-        rowCheckbox.type = 'checkbox';
-        rowCheckbox.className = 'row-select-checkbox';
-        tdCheckbox.appendChild(rowCheckbox);
-        tr.appendChild(tdCheckbox);
-
-        columns.forEach(col => {
-            const td = document.createElement('td');
-            let value = row[col[1]];
-            td.textContent = value == null ? '' : value;
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-
-    // Update total count
-    const totalCountEl = document.querySelector('.badge.bg-secondary');
-    if (totalCountEl) {
-        totalCountEl.textContent = `Total: ${totalCount}`;
-    }
-
-    // Reinitialize column resizer after grid update
+    // Re-initialize column functionality
     if (window.columnResizer) {
         window.columnResizer.attachEventListeners();
         window.columnResizer.loadSavedColumnWidths();
     }
 
-    // Reinitialize column dragger after grid update
     if (window.columnDragger) {
         window.columnDragger.attachEventListeners();
         window.columnDragger.applyColumnOrderWithDelay();
     }
 
-    // Apply column visibility after grid update
     if (window.columnVisibilityManager) {
         window.columnVisibilityManager.applyVisibilityAfterGridUpdate();
+    }
+
+    if (window.columnSorter) {
+        window.columnSorter.applySortAfterGridUpdate();
     }
 } 

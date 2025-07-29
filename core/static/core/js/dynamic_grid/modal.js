@@ -109,13 +109,60 @@ function showEditModal(fields, rowData, tableName) {
         wrapper.appendChild(label);
         let input;
         if (["select", "autocomplete", "dropdown"].includes(field.type)) {
+            // For edit mode, use a regular select instead of Select2 to avoid tag-like appearance
             input = document.createElement('select');
-            input.className = 'form-control inputable-dropdown';
+            input.className = 'form-control';
             input.id = `edit_field_${field.name}`;
             input.name = field.name;
             input.setAttribute('data-lookup', '1');
             input.setAttribute('data-table', tableName);
             input.setAttribute('data-field', field.name);
+            
+            // Add placeholder option
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = 'Select or type to add';
+            input.appendChild(placeholderOption);
+            
+            // Load options and set value
+            fetch(`/api/options/${tableName}/${field.name}/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.options) {
+                        data.options.forEach(opt => {
+                            const option = document.createElement('option');
+                            option.value = opt.text;
+                            option.textContent = opt.text;
+                            input.appendChild(option);
+                        });
+                    }
+                    
+                    // Set the existing value
+                    const existingValue = rowData[field.name];
+                    if (existingValue) {
+                        // Add the existing value if it's not in the options
+                        if (!data.options.some(opt => opt.text === existingValue)) {
+                            const option = document.createElement('option');
+                            option.value = existingValue;
+                            option.textContent = existingValue;
+                            input.appendChild(option);
+                        }
+                        input.value = existingValue;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading options:', error);
+                    // Set the existing value even if options fail to load
+                    const existingValue = rowData[field.name];
+                    if (existingValue) {
+                        const option = document.createElement('option');
+                        option.value = existingValue;
+                        option.textContent = existingValue;
+                        input.appendChild(option);
+                        input.value = existingValue;
+                    }
+                });
+            
             wrapper.appendChild(input);
         } else if (field.type === 'date') {
             input = document.createElement('input');
@@ -150,44 +197,10 @@ function showEditModal(fields, rowData, tableName) {
         wrapper.appendChild(errorDiv);
         editFormFieldsDiv.appendChild(wrapper);
     });
-    // Initialize Select2 for inputable dropdowns
-    $(editFormFieldsDiv).find('.inputable-dropdown').each(function() {
-        const $select = $(this);
-        const field = $select.data('field');
-        const table = $select.data('table');
-        $select.prop('disabled', false);
-        $select.select2({
-            theme: 'bootstrap-5',
-            tags: true,
-            width: '100%',
-            ajax: {
-                url: `/api/options/${table}/${field}/`,
-                dataType: 'json',
-                processResults: function(data) {
-                    return { results: data.options.map(function(option) { return { id: option.text, text: option.text }; }) };
-                }
-            },
-            placeholder: 'Select or type to add',
-            allowClear: true,
-            createTag: function (params) {
-                var term = $.trim(params.term);
-                if (term === '') { return null; }
-                return { id: term, text: term, newTag: true };
-            },
-            dropdownParent: $('#editModal')
-        });
-    });
-    // Pre-fill dropdowns after Select2 is initialized
-    setTimeout(() => {
-        fields.forEach(field => {
-            if (["select", "autocomplete", "dropdown"].includes(field.type)) {
-                const $select = $(editFormFieldsDiv).find(`[name="${field.name}"]`);
-                if ($select.length && rowData[field.name]) {
-                    $select.append(new Option(rowData[field.name], rowData[field.name], true, true)).trigger('change');
-                }
-            }
-        });
-    }, 300);
+    
+    // Note: We're not using Select2 for edit mode to avoid tag-like appearance
+    // Regular HTML selects are used instead
+    
     // Set record id on modal for later use
     editModal.setAttribute('data-record-id', rowData.id);
     // Show modal
