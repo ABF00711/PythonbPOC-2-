@@ -389,7 +389,6 @@ function showEditModal(fields, rowData, tableName) {
 function generateSearchInput(field) {
     // Special handling for job field - create autocomplete input
     if (field.name.toLowerCase() === 'job') {
-        console.log('Generating job autocomplete input for search');
         return `<input type="text" class="form-control search-input job-autocomplete" data-field="${field.name}" placeholder="Enter ${field.label}" autocomplete="off">`;
     }
     
@@ -436,10 +435,8 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
         
         // Special handling for job field - setup autocomplete
         if (field.name.toLowerCase() === 'job') {
-            console.log('Setting up job autocomplete for search modal');
             const input = fieldRow.querySelector('.job-autocomplete');
             if (input) {
-                console.log('Job input found, setting up autocomplete');
                 // Create dropdown container for suggestions
                 const dropdownContainer = document.createElement('div');
                 dropdownContainer.className = 'job-suggestions-dropdown';
@@ -464,9 +461,6 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
                 
                 // Add autocomplete functionality
                 setupJobAutocomplete(input, dropdownContainer, tableName, field.name);
-                console.log('Job autocomplete setup complete');
-            } else {
-                console.log('Job input not found');
             }
         }
         
@@ -603,3 +597,33 @@ window.showEditModal = showEditModal;
 window.renderSearchFields = renderSearchFields;
 window.generateSearchInput = generateSearchInput;
 // Add more modal-related exports as needed
+
+// Utility: Focus first field in modal when shown
+function focusFirstField(modalSelector, fieldSelector = 'input, select, textarea, [tabindex]:not([tabindex="-1"])') {
+    const modal = document.querySelector(modalSelector);
+    if (!modal) return;
+    modal.addEventListener('shown.bs.modal', () => {
+        const first = modal.querySelector(fieldSelector);
+        if (first) first.focus();
+    });
+}
+
+// Create Modal
+focusFirstField('#createModal');
+
+// Edit Modal (dynamically created, so use event delegation)
+document.addEventListener('shown.bs.modal', function(e) {
+    if (e.target && e.target.id === 'editModal') {
+        const first = e.target.querySelector('input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (first) first.focus();
+    }
+});
+
+// Search Modal
+focusFirstField('#searchModal');
+
+// Columns Modal (focus first checkbox or input)
+focusFirstField('#columnsModal', 'input[type="checkbox"], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+
+// Layouts Modal (focus first input)
+focusFirstField('#layoutsModal');
