@@ -387,6 +387,12 @@ function showEditModal(fields, rowData, tableName) {
 }
 
 function generateSearchInput(field) {
+    // Special handling for job field - create autocomplete input
+    if (field.name.toLowerCase() === 'job') {
+        console.log('Generating job autocomplete input for search');
+        return `<input type="text" class="form-control search-input job-autocomplete" data-field="${field.name}" placeholder="Enter ${field.label}" autocomplete="off">`;
+    }
+    
     switch(field.type) {
         case 'text':
             return `<input type="text" class="form-control search-input" data-field="${field.name}" placeholder="Enter ${field.label}">`;
@@ -427,8 +433,45 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
             </div>
         `;
         searchFieldsContainer.appendChild(fieldRow);
-        // Populate dropdown options for search fields
-        if (field.type === 'dropdown') {
+        
+        // Special handling for job field - setup autocomplete
+        if (field.name.toLowerCase() === 'job') {
+            console.log('Setting up job autocomplete for search modal');
+            const input = fieldRow.querySelector('.job-autocomplete');
+            if (input) {
+                console.log('Job input found, setting up autocomplete');
+                // Create dropdown container for suggestions
+                const dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'job-suggestions-dropdown';
+                dropdownContainer.style.cssText = `
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-top: none;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    display: none;
+                `;
+                
+                // Make the input container relative positioned
+                const inputCol = fieldRow.querySelector('.col-md-6');
+                inputCol.style.position = 'relative';
+                inputCol.appendChild(dropdownContainer);
+                
+                // Add autocomplete functionality
+                setupJobAutocomplete(input, dropdownContainer, tableName, field.name);
+                console.log('Job autocomplete setup complete');
+            } else {
+                console.log('Job input not found');
+            }
+        }
+        
+        // Populate dropdown options for search fields (skip job field as it's handled specially)
+        if (field.type === 'dropdown' && field.name.toLowerCase() !== 'job') {
             const select = fieldRow.querySelector('.search-input');
             if (select) {
                 // Use Select2 for search dropdowns (no tags)

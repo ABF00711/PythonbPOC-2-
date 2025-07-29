@@ -473,6 +473,12 @@ body.dragging * {
     border-radius: 0 0 4px 4px;
 }
 
+/* Ensure dropdown appears above search modal */
+#searchModal .job-suggestions-dropdown {
+    z-index: 9999 !important;
+    position: absolute !important;
+}
+
 .suggestion-item {
     transition: background-color 0.2s ease;
 }
