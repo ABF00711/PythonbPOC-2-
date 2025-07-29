@@ -1,7 +1,11 @@
+{% load static %}
 <div class="d-flex">
     <nav class="sidebar bg-light border-end p-3" style="min-width: 220px; height: 100vh; position: fixed; top: 0; left: 0; z-index: 1040;">
         <div class="mb-4 text-center">
-            <a class="navbar-brand fw-bold" href="/">PythonPOC</a>
+            <a class="navbar-brand fw-bold d-flex align-items-center justify-content-center" href="/">
+                <img src="{% static 'core/img/python-logo.png' %}" alt="Python Logo" width="40" height="40" class="me-2" style="border-radius:8px;box-shadow:0 2px 8px rgba(48,105,152,0.08);background:#fff;">
+                <span class="fw-bold fs-4" style="letter-spacing: 1px;">PythonPOC</span>
+            </a>
         </div>
         <ul class="nav flex-column">
             <li class="nav-item mb-2">
