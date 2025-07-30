@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Function to initialize default column states for first-time users
 async function initializeDefaultColumnStates(tableName) {
     try {
-
+        console.log('Checking for default column states for table:', tableName);
         
         // Check if any column state exists for this table
         const visibilityKey = `grid_visible_columns_${tableName}`;
@@ -446,35 +446,39 @@ async function initializeDefaultColumnStates(tableName) {
         const hasOrderState = localStorage.getItem(orderKey);
         const hasWidthsState = localStorage.getItem(widthsKey);
         
-
+        console.log('Existing states:', {
+            visibility: !!hasVisibilityState,
+            order: !!hasOrderState,
+            widths: !!hasWidthsState
+        });
         
         // If no states exist, initialize defaults
         if (!hasVisibilityState || !hasOrderState || !hasWidthsState) {
-
+            console.log('Initializing default column states for first-time user...');
             
             // Fetch field configurations to get column information
             const response = await fetch(`/api/fields/${tableName}/`);
             const data = await response.json();
             const fields = data.fields;
             
-
+            console.log('Fetched fields:', fields.length);
             
             // Initialize default visibility (all columns visible)
             if (!hasVisibilityState) {
                 const defaultVisibleColumns = fields.map(field => field.name);
                 localStorage.setItem(visibilityKey, JSON.stringify(defaultVisibleColumns));
-
+                console.log('Default visibility state saved:', defaultVisibleColumns);
             }
             
             // Initialize default column order (current order from DOM)
             if (!hasOrderState) {
                 const currentHeaders = document.querySelectorAll('.resizable-column');
-
+                console.log('Found headers:', currentHeaders.length);
                 
                 if (currentHeaders.length > 0) {
                     const defaultColumnOrder = Array.from(currentHeaders).map(h => h.dataset.columnName);
                     localStorage.setItem(orderKey, JSON.stringify(defaultColumnOrder));
-
+                    console.log('Default column order saved:', defaultColumnOrder);
                 } else {
                     console.warn('No resizable columns found in DOM, will retry...');
                     // Retry after a short delay
@@ -483,7 +487,7 @@ async function initializeDefaultColumnStates(tableName) {
                         if (retryHeaders.length > 0) {
                             const retryColumnOrder = Array.from(retryHeaders).map(h => h.dataset.columnName);
                             localStorage.setItem(orderKey, JSON.stringify(retryColumnOrder));
-
+                            console.log('Default column order saved on retry:', retryColumnOrder);
                         }
                     }, 1000);
                 }
@@ -492,7 +496,7 @@ async function initializeDefaultColumnStates(tableName) {
             // Initialize default column widths (current widths from DOM)
             if (!hasWidthsState) {
                 const currentHeaders = document.querySelectorAll('.resizable-column');
-
+                console.log('Found headers for widths:', currentHeaders.length);
                 
                 if (currentHeaders.length > 0) {
                     const defaultColumnWidths = {};
@@ -502,7 +506,7 @@ async function initializeDefaultColumnStates(tableName) {
                         defaultColumnWidths[columnName] = width;
                     });
                     localStorage.setItem(widthsKey, JSON.stringify(defaultColumnWidths));
-
+                    console.log('Default column widths saved:', defaultColumnWidths);
                 } else {
                     console.warn('No resizable columns found for width initialization, will retry...');
                     // Retry after a short delay
@@ -516,17 +520,21 @@ async function initializeDefaultColumnStates(tableName) {
                                 retryColumnWidths[columnName] = width;
                             });
                             localStorage.setItem(widthsKey, JSON.stringify(retryColumnWidths));
-
+                            console.log('Default column widths saved on retry:', retryColumnWidths);
                         }
                     }, 1000);
                 }
             }
+            
+            console.log('Default column states initialization completed');
+        } else {
+            console.log('Column states already exist, skipping initialization');
         }
     } catch (error) {
         console.error('Error initializing default column states:', error);
     }
 }
-
+// --- Helper to re-attach row and checkbox handlers after grid update ---
 function attachGridEventHandlers(tableName, fieldConfigs) {
     const table = document.querySelector('table.table');
     if (!table) return;
@@ -570,4 +578,11 @@ function attachGridEventHandlers(tableName, fieldConfigs) {
         });
     }
 }
- 
+// --- Initial attach on page load ---
+//attachGridEventHandlers();
+// After every updateGrid (e.g., after search, after delete), call attachGridEventHandlers();
+// For example, after updateGrid in search:
+// updateGrid(data.columns, data.data, data.total_count);
+// attachGridEventHandlers();
+// ... existing code ...
+// In all places where updateGrid is called, add attachGridEventHandlers() immediately after. 

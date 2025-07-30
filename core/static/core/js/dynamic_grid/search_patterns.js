@@ -66,36 +66,36 @@ export class SearchPatternManager {
     attachEventListeners() {
         // Only attach listeners once
         if (this.eventListenersAttached) {
-    
+            console.log('Event listeners already attached, skipping');
             return;
         }
 
         // Pattern selection
-
+        console.log('attachEventListeners called');
         const patternSelect = document.getElementById('search-pattern-select');
         if (patternSelect) {
-
+            console.log('Found pattern select, adding event listener');
             patternSelect.addEventListener('change', (e) => this.onPatternSelect(e));
         } else {
-
+            console.log('Pattern select not found');
         }
 
         // Save pattern
         const saveBtn = document.getElementById('save-pattern-btn');
         if (saveBtn) {
-    
+            console.log('Found save button, adding event listener');
             saveBtn.addEventListener('click', () => this.savePattern());
         } else {
-
+            console.log('Save button not found');
         }
 
         // Delete pattern
         const deleteBtn = document.getElementById('delete-pattern-btn');
         if (deleteBtn) {
-    
+            console.log('Found delete button, adding event listener');
             deleteBtn.addEventListener('click', () => this.deletePattern());
         } else {
-
+            console.log('Delete button not found');
         }
 
         this.eventListenersAttached = true;
@@ -185,11 +185,11 @@ export class SearchPatternManager {
     }
 
     async savePattern() {
-
+        console.log('savePattern called');
         const patternNameInput = document.getElementById('search-pattern-name');
-
+        console.log('Pattern name input:', patternNameInput);
         const searchName = patternNameInput.value.trim();
-
+        console.log('Search name:', searchName);
 
         if (!searchName) {
             showToast('Please enter a pattern name', 'error');

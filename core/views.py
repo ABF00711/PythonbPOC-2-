@@ -1,16 +1,26 @@
+from django.contrib.auth import views as auth_views
+from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.urls import reverse
+from .forms import CustomUserCreationForm, EmailAuthenticationForm, ProfileUpdateForm
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db import connection
-from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
-from .forms import CustomUserCreationForm, EmailAuthenticationForm, ProfileUpdateForm
-from .models import SearchPattern, GridLayout
+from .models import SearchPattern
 import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.db import connection
+from .models import GridLayout
+from django.contrib.auth.decorators import login_required
+from .models import TabInterface
 
 # Create your views here.
 
@@ -308,12 +318,12 @@ def api_update(request, table_name, record_id):
     """Update a record in table_name by ID. Only updates fields defined in search_config."""
     try:
         data = json.loads(request.body)
-    
+        print(f"api_update: table={table_name}, record_id={record_id}, data={data}")
     except json.JSONDecodeError as e:
-
+        print(f"api_update: JSON decode error: {e}")
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
-
+        print(f"api_update: Error parsing request body: {e}")
         return JsonResponse({'error': 'Invalid request data'}, status=400)
     
     cursor = connection.cursor()
@@ -342,7 +352,7 @@ def api_update(request, table_name, record_id):
         # Get field names from search_config
         cursor.execute("SELECT field_name FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
         fields = [row[0] for row in cursor.fetchall()]
-
+        print(f"api_update: Available fields: {fields}")
         
         if not fields:
             return JsonResponse({'error': 'No fields found.'}, status=404)
@@ -357,14 +367,15 @@ def api_update(request, table_name, record_id):
                 set_clauses.append(f"{field} = %s")
                 values.append(data[field] if data[field] != '' else None)
         
-
+        print(f"api_update: Set clauses: {set_clauses}")
+        print(f"api_update: Values: {values}")
         
         if not set_clauses:
             return JsonResponse({'error': 'No fields to update.'}, status=400)
         
         values.append(record_id)
         sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = %s"
-
+        print(f"api_update: SQL: {sql}")
         
         cursor.execute(sql, values)
         
@@ -376,7 +387,7 @@ def api_update(request, table_name, record_id):
     except Exception as e:
         # Rollback transaction on error
         cursor.execute("ROLLBACK")
-
+        print(f"api_update: Database error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 @require_POST
@@ -398,7 +409,7 @@ def api_delete(request, table_name):
 @require_GET
 @login_required
 def api_gsearch(request, table_name, field_name):
-
+    print(f"api_gsearch: {table_name}, {field_name}")
     """Return autocomplete suggestions for GSearch operator as JSON."""
     q = request.GET.get('q', '').strip()
     cursor = connection.cursor()
@@ -503,7 +514,7 @@ def api_search(request, table_name):
     else:
         sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} {order_by_sql}"
     
-
+    print(f"sql: {sql}")
     cursor.execute(sql, params)
     
     # Handle field mapping correctly when we have aliases
@@ -807,5 +818,129 @@ def api_set_default_layout(request, table_name, layout_id):
         return JsonResponse({'message': 'Default layout set successfully'})
     except GridLayout.DoesNotExist:
         return JsonResponse({'error': 'Layout not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+@login_required
+def api_tab_layouts(request):
+    """Get all tab layouts for the current user"""
+    try:
+        username = request.user.username
+        layouts = TabInterface.objects.filter(
+            username=username
+        ).order_by('-is_default', '-updated_at')
+        
+        layouts_data = []
+        for layout in layouts:
+            layouts_data.append({
+                'id': layout.id,
+                'tabs_name': layout.tabs_name,
+                'is_default': layout.is_default,
+                'created_at': layout.created_at.strftime('%Y-%m-%d %H:%M'),
+                'updated_at': layout.updated_at.strftime('%Y-%m-%d %H:%M')
+            })
+        
+        return JsonResponse({'layouts': layouts_data})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_save_tab_layout(request):
+    """Save current tab layout"""
+    try:
+        data = json.loads(request.body)
+        username = request.user.username
+        tabs_name = data.get('tabs_name')
+        tabs_data = data.get('tabs_data')
+        is_default = data.get('is_default', False)
+        
+        if not tabs_name or not tabs_data:
+            return JsonResponse({'error': 'Layout name and tab data are required'}, status=400)
+        
+        # Check if layout with same name exists
+        existing_layout = TabInterface.objects.filter(
+            username=username,
+            tabs_name=tabs_name
+        ).first()
+        
+        if existing_layout:
+            # Update existing layout
+            existing_layout.tabs_data = tabs_data
+            existing_layout.is_default = is_default
+            existing_layout.save()
+            return JsonResponse({'message': 'Tab layout updated successfully', 'layout_id': existing_layout.id})
+        else:
+            # Create new layout
+            layout = TabInterface.objects.create(
+                username=username,
+                tabs_name=tabs_name,
+                tabs_data=tabs_data,
+                is_default=is_default
+            )
+            return JsonResponse({'message': 'Tab layout saved successfully', 'layout_id': layout.id})
+            
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+@login_required
+def api_load_tab_layout(request, layout_id):
+    """Load a specific tab layout"""
+    try:
+        username = request.user.username
+        layout = TabInterface.objects.get(
+            id=layout_id,
+            username=username
+        )
+        
+        return JsonResponse({
+            'tabs_name': layout.tabs_name,
+            'tabs_data': layout.tabs_data,
+            'is_default': layout.is_default
+        })
+    except TabInterface.DoesNotExist:
+        return JsonResponse({'error': 'Tab layout not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+@login_required
+def api_delete_tab_layout(request, layout_id):
+    """Delete a tab layout"""
+    try:
+        username = request.user.username
+        layout = TabInterface.objects.get(
+            id=layout_id,
+            username=username
+        )
+        layout.delete()
+        return JsonResponse({'message': 'Tab layout deleted successfully'})
+    except TabInterface.DoesNotExist:
+        return JsonResponse({'error': 'Tab layout not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+@login_required
+def api_set_default_tab_layout(request, layout_id):
+    """Set a tab layout as default"""
+    try:
+        username = request.user.username
+        layout = TabInterface.objects.get(
+            id=layout_id,
+            username=username
+        )
+        layout.is_default = True
+        layout.save()
+        return JsonResponse({'message': 'Default tab layout set successfully'})
+    except TabInterface.DoesNotExist:
+        return JsonResponse({'error': 'Tab layout not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

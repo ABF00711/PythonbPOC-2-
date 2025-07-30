@@ -25,11 +25,25 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
             input.setAttribute('data-table', tableName);
             input.setAttribute('data-field', field.name);
             input.setAttribute('autocomplete', 'off');
+            input.placeholder = 'Type to search jobs or create new one...';
             wrapper.appendChild(input);
             
             // Create dropdown container for suggestions
             const dropdownContainer = document.createElement('div');
             dropdownContainer.className = 'job-suggestions-dropdown';
+            dropdownContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+            `;
             wrapper.style.position = 'relative';
             wrapper.appendChild(dropdownContainer);
             
@@ -106,9 +120,6 @@ function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
     let suggestions = [];
     let selectedIndex = -1;
     let isDropdownVisible = false;
-    
-    // Set placeholder to indicate users can create new jobs
-    input.placeholder = 'Type to search jobs or create new one...';
     
     // Fetch existing jobs on focus
     input.addEventListener('focus', async () => {
@@ -306,6 +317,19 @@ function showEditModal(fields, rowData, tableName) {
             // Create dropdown container for suggestions
             const dropdownContainer = document.createElement('div');
             dropdownContainer.className = 'job-suggestions-dropdown';
+            dropdownContainer.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+            `;
             wrapper.style.position = 'relative';
             wrapper.appendChild(dropdownContainer);
             
@@ -453,6 +477,19 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
                 // Create dropdown container for suggestions
                 const dropdownContainer = document.createElement('div');
                 dropdownContainer.className = 'job-suggestions-dropdown';
+                dropdownContainer.style.cssText = `
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-top: none;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    display: none;
+                `;
                 
                 // Make the input container relative positioned
                 const inputCol = fieldRow.querySelector('.col-md-6');

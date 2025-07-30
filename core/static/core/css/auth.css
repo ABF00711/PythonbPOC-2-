@@ -10,7 +10,11 @@ body {
     border: 1px solid rgba(255,255,255,0.18);
     padding: 2rem 2rem 1.5rem 2rem;
 }
-
+.brand-logo {
+    width: 70px;
+    height: 70px;
+    object-fit: contain;
+}
 .form-floating > .form-control:focus ~ label,
 .form-floating > .form-control:not(:placeholder-shown) ~ label {
     opacity: 1;
@@ -27,7 +31,17 @@ body {
     background: #10b981;
     box-shadow: 0 4px 16px rgba(16,185,129,0.15);
 }
-
+.social-btn {
+    border: none;
+    background: none;
+    margin: 0 0.5rem;
+    font-size: 1.5rem;
+    color: #6366f1;
+    transition: color 0.2s;
+}
+.social-btn:hover {
+    color: #0ea5e9;
+}
 .glass-card .mb-3.position-relative {
     position: relative;
     width: 100%;

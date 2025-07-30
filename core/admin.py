@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Role, UserRole, Menu, RoleMenu, SearchPattern, GridLayout
+from .models import CustomUser, Role, UserRole, Menu, RoleMenu, SearchPattern, GridLayout, TabInterface
 
 admin.site.register(CustomUser)
 admin.site.register(Role)
@@ -18,3 +18,9 @@ class GridLayoutAdmin(admin.ModelAdmin):
     list_display = ('username', 'table_name', 'layout_name', 'is_default', 'created_at', 'updated_at')
     list_filter = ('table_name', 'username', 'is_default')
     search_fields = ('username', 'table_name', 'layout_name')
+
+@admin.register(TabInterface)
+class TabInterfaceAdmin(admin.ModelAdmin):
+    list_display = ('username', 'tabs_name', 'is_default', 'created_at', 'updated_at')
+    list_filter = ('username', 'is_default')
+    search_fields = ('username', 'tabs_name')
