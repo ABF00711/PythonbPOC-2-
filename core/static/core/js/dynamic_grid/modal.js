@@ -30,19 +30,6 @@ function renderFormFields(fields, formFieldsDiv, tableName) {
             // Create dropdown container for suggestions
             const dropdownContainer = document.createElement('div');
             dropdownContainer.className = 'job-suggestions-dropdown';
-            dropdownContainer.style.cssText = `
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: white;
-                border: 1px solid #ddd;
-                border-top: none;
-                max-height: 200px;
-                overflow-y: auto;
-                z-index: 1000;
-                display: none;
-            `;
             wrapper.style.position = 'relative';
             wrapper.appendChild(dropdownContainer);
             
@@ -120,12 +107,20 @@ function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
     let selectedIndex = -1;
     let isDropdownVisible = false;
     
+    // Set placeholder to indicate users can create new jobs
+    input.placeholder = 'Type to search jobs or create new one...';
+    
     // Fetch existing jobs on focus
     input.addEventListener('focus', async () => {
         try {
             const response = await fetch(`/api/options/${tableName}/${fieldName}/`);
             const data = await response.json();
             suggestions = data.options.map(option => option.text);
+            
+            // Show all jobs when focused
+            if (suggestions.length > 0) {
+                showDropdown(suggestions, '');
+            }
         } catch (error) {
             console.error('Error fetching job options:', error);
             suggestions = [];
@@ -135,8 +130,14 @@ function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
     // Handle input changes
     input.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
+        
         if (query.length === 0) {
-            hideDropdown();
+            // Show all jobs when input is empty
+            if (suggestions.length > 0) {
+                showDropdown(suggestions, '');
+            } else {
+                hideDropdown();
+            }
             return;
         }
         
@@ -147,7 +148,8 @@ function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
         if (filteredSuggestions.length > 0) {
             showDropdown(filteredSuggestions, query);
         } else {
-            hideDropdown();
+            // Show "Create new job" option when no matches found
+            showDropdown([], query);
         }
     });
     
@@ -171,7 +173,13 @@ function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
             case 'Enter':
                 e.preventDefault();
                 if (selectedIndex >= 0 && items[selectedIndex]) {
-                    selectSuggestion(items[selectedIndex].textContent);
+                    const itemText = items[selectedIndex].textContent;
+                    if (itemText.includes('Create new job:')) {
+                        // User wants to create a new job, keep the current input value
+                        hideDropdown();
+                    } else {
+                        selectSuggestion(itemText);
+                    }
                 }
                 break;
             case 'Escape':
@@ -188,22 +196,39 @@ function setupJobAutocomplete(input, dropdownContainer, tableName, fieldName) {
     });
     
     function showDropdown(suggestions, query) {
-        dropdownContainer.innerHTML = suggestions.map(suggestion => {
-            const highlightedSuggestion = suggestion.replace(
-                new RegExp(`(${query})`, 'gi'),
-                '<strong>$1</strong>'
-            );
-            return `<div class="suggestion-item p-2 border-bottom" style="cursor: pointer;">${highlightedSuggestion}</div>`;
-        }).join('');
+        let dropdownContent = '';
         
-        dropdownContainer.style.display = 'block';
-        isDropdownVisible = true;
+        if (suggestions.length > 0) {
+            // Show filtered suggestions
+            dropdownContent = suggestions.map(suggestion => {
+                const highlightedSuggestion = suggestion.replace(
+                    new RegExp(`(${query})`, 'gi'),
+                    '<strong>$1</strong>'
+                );
+                return `<div class="suggestion-item p-2 border-bottom" style="cursor: pointer;">${highlightedSuggestion}</div>`;
+            }).join('');
+        } else if (query.length > 0) {
+            // Show "Create new job" option when no matches found
+            dropdownContent = `<div class="suggestion-item p-2 border-bottom" style="cursor: pointer; color: #007bff; font-style: italic;">
+                <i class="bi bi-plus-circle me-2"></i>Create new job: "${query}"
+            </div>`;
+        }
+        
+        dropdownContainer.innerHTML = dropdownContent;
+        dropdownContainer.style.display = dropdownContent ? 'block' : 'none';
+        isDropdownVisible = !!dropdownContent;
         selectedIndex = -1;
         
         // Add click handlers to suggestion items
         dropdownContainer.querySelectorAll('.suggestion-item').forEach((item, index) => {
             item.addEventListener('click', () => {
-                selectSuggestion(suggestions[index]);
+                const itemText = item.textContent;
+                if (itemText.includes('Create new job:')) {
+                    // User clicked to create a new job, keep the current input value
+                    hideDropdown();
+                } else {
+                    selectSuggestion(suggestions[index]);
+                }
             });
             
             item.addEventListener('mouseenter', () => {
@@ -274,25 +299,13 @@ function showEditModal(fields, rowData, tableName) {
             input.setAttribute('data-table', tableName);
             input.setAttribute('data-field', field.name);
             input.setAttribute('autocomplete', 'off');
+            input.placeholder = 'Type to search jobs or create new one...';
             input.value = rowData[field.name] || '';
             wrapper.appendChild(input);
             
             // Create dropdown container for suggestions
             const dropdownContainer = document.createElement('div');
             dropdownContainer.className = 'job-suggestions-dropdown';
-            dropdownContainer.style.cssText = `
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: white;
-                border: 1px solid #ddd;
-                border-top: none;
-                max-height: 200px;
-                overflow-y: auto;
-                z-index: 1000;
-                display: none;
-            `;
             wrapper.style.position = 'relative';
             wrapper.appendChild(dropdownContainer);
             
@@ -389,7 +402,7 @@ function showEditModal(fields, rowData, tableName) {
 function generateSearchInput(field) {
     // Special handling for job field - create autocomplete input
     if (field.name.toLowerCase() === 'job') {
-        return `<input type="text" class="form-control search-input job-autocomplete" data-field="${field.name}" placeholder="Enter ${field.label}" autocomplete="off">`;
+        return `<input type="text" class="form-control search-input job-autocomplete" data-field="${field.name}" placeholder="Type to search jobs or create new one..." autocomplete="off">`;
     }
     
     switch(field.type) {
@@ -440,19 +453,6 @@ function renderSearchFields(fields, searchFieldsContainer, tableName) {
                 // Create dropdown container for suggestions
                 const dropdownContainer = document.createElement('div');
                 dropdownContainer.className = 'job-suggestions-dropdown';
-                dropdownContainer.style.cssText = `
-                    position: absolute;
-                    top: 100%;
-                    left: 0;
-                    right: 0;
-                    background: white;
-                    border: 1px solid #ddd;
-                    border-top: none;
-                    max-height: 200px;
-                    overflow-y: auto;
-                    z-index: 1000;
-                    display: none;
-                `;
                 
                 // Make the input container relative positioned
                 const inputCol = fieldRow.querySelector('.col-md-6');

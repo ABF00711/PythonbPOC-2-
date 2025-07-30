@@ -524,3 +524,55 @@ body.dragging * {
 .job-suggestions-dropdown {
     z-index: 9999 !important;
 } 
+
+/* Job Autocomplete Dropdown Styles */
+.job-suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 4px 4px;
+}
+
+.job-suggestions-dropdown .suggestion-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.job-suggestions-dropdown .suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.job-suggestions-dropdown .suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.job-suggestions-dropdown .suggestion-item strong {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Create new job option styling */
+.job-suggestions-dropdown .suggestion-item[style*="color: #007bff"] {
+    border-left: 3px solid #007bff;
+    background-color: #f8f9ff;
+}
+
+.job-suggestions-dropdown .suggestion-item[style*="color: #007bff"]:hover {
+    background-color: #e3f2fd;
+}
+
+/* Ensure the job input field container has relative positioning */
+.mb-3:has(.job-autocomplete) {
+    position: relative;
+} 
