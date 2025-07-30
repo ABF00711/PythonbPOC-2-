@@ -298,6 +298,23 @@ class ColumnVisibilityManager {
             }, 50);
         }, 100);
     }
+
+    // Method to restore visibility state on page load
+    async restoreVisibility() {
+        console.log('Restoring column visibility for table:', this.tableName);
+        
+        try {
+            // Load saved visibility state
+            await this.loadVisibleColumns();
+            
+            // Apply visibility to grid
+            this.applyVisibilityToGrid();
+            
+            console.log('Column visibility restored successfully');
+        } catch (error) {
+            console.error('Error restoring column visibility:', error);
+        }
+    }
 }
 
 // Initialize column visibility manager when DOM is loaded

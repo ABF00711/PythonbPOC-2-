@@ -7,6 +7,89 @@ import { SearchPatternManager } from './dynamic_grid/search_patterns.js';
 
 // Assumes modal.js is loaded and exposes window.renderFormFields, window.showEditModal, window.renderSearchFields
 
+// Global state restoration coordinator
+class GridStateRestorer {
+    constructor() {
+        this.tableName = '';
+        this.isRestoring = false;
+        this.restorationQueue = [];
+    }
+
+    setTableName(tableName) {
+        this.tableName = tableName;
+    }
+
+    // Add a restoration task to the queue
+    addRestorationTask(task) {
+        this.restorationQueue.push(task);
+    }
+
+    // Execute all restoration tasks in order
+    async executeRestoration() {
+        if (this.isRestoring) return;
+        this.isRestoring = true;
+
+        console.log('Starting grid state restoration for table:', this.tableName);
+
+        try {
+            // Wait for DOM to be ready
+            await this.waitForDOM();
+
+            // Execute restoration tasks in order
+            for (const task of this.restorationQueue) {
+                try {
+                    await task();
+                } catch (error) {
+                    console.error('Error executing restoration task:', error);
+                }
+            }
+
+            console.log('Grid state restoration completed');
+        } catch (error) {
+            console.error('Error during grid state restoration:', error);
+        } finally {
+            this.isRestoring = false;
+        }
+    }
+
+    // Wait for DOM elements to be available
+    async waitForDOM() {
+        const maxAttempts = 50; // 5 seconds max
+        let attempts = 0;
+
+        while (attempts < maxAttempts) {
+            const table = document.querySelector('#dynamic-grid-table');
+            const headers = document.querySelectorAll('.resizable-column');
+            
+            if (table && headers.length > 0) {
+                console.log('DOM ready for state restoration');
+                return;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+
+        throw new Error('DOM not ready for state restoration');
+    }
+
+    // Check if states exist for this table
+    hasSavedStates() {
+        const visibilityKey = `grid_visible_columns_${this.tableName}`;
+        const orderKey = `grid_column_order_${this.tableName}`;
+        const widthsKey = `grid_column_widths_${this.tableName}`;
+        const sortKey = `grid_column_sort_${this.tableName}`;
+
+        return localStorage.getItem(visibilityKey) || 
+               localStorage.getItem(orderKey) || 
+               localStorage.getItem(widthsKey) || 
+               localStorage.getItem(sortKey);
+    }
+}
+
+// Global instance
+window.gridStateRestorer = new GridStateRestorer();
+
 document.addEventListener('DOMContentLoaded', function() {
     const addBtn = document.getElementById('add-record-btn');
     const modal = new bootstrap.Modal(document.getElementById('createModal'));
@@ -24,6 +107,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Table name not found in data attribute');
         return;
     }
+
+    // Set table name for state restorer
+    window.gridStateRestorer.setTableName(tableName);
     
     let fieldConfigs = [];
     
@@ -207,194 +293,69 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Bulk Delete Button click
-    if (deleteBtn && bulkDeleteModal && bulkDeleteMsg && confirmBulkDeleteBtn) {
+    // Bulk delete functionality
+    if (deleteBtn) {
         deleteBtn.addEventListener('click', function() {
-            const checked = table.querySelectorAll('.row-select-checkbox:checked');
-            const count = checked.length;
-            bulkDeleteMsg.textContent = `Are you sure you want to permanently delete ${count} selected record${count > 1 ? 's' : ''}?`;
-            const modal = new bootstrap.Modal(bulkDeleteModal);
-            modal.show();
+            const checkedBoxes = document.querySelectorAll('.row-select-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                showToast('Please select records to delete.', 'warning');
+                return;
+            }
+            
+            const recordIds = Array.from(checkedBoxes).map(cb => cb.value);
+            bulkDeleteMsg.textContent = `Are you sure you want to delete ${recordIds.length} selected record(s)?`;
+            
+            const bulkModal = new bootstrap.Modal(bulkDeleteModal);
+            bulkModal.show();
         });
+    }
 
+    if (confirmBulkDeleteBtn) {
         confirmBulkDeleteBtn.addEventListener('click', async function() {
-            const checked = table.querySelectorAll('.row-select-checkbox:checked');
-            const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-record-id'));
-            if (!ids.length || !tableName) return;
-            const data = await deleteRecords(tableName, ids);
-            if (data.success) {
-                // Hide the confirmation modal
-                const modalInstance = bootstrap.Modal.getInstance(bulkDeleteModal);
-                if (modalInstance) modalInstance.hide();
-                showToast('Records deleted successfully!', 'success');
-                // Remove deleted rows from DOM
-                data.deleted.forEach(id => {
-                    const row = table.querySelector(`tr[data-record-id="${id}"]`);
-                    if (row) row.remove();
-                });
-                // Update total count badge
-                const totalBadge = document.querySelector('.badge.bg-secondary.fs-5');
-                if (totalBadge) {
-                    const current = parseInt(totalBadge.textContent.replace(/\D/g, ''));
-                    const newTotal = Math.max(0, current - data.deleted.length);
-                    totalBadge.textContent = `Total: ${newTotal}`;
+            const checkedBoxes = document.querySelectorAll('.row-select-checkbox:checked');
+            const recordIds = Array.from(checkedBoxes).map(cb => cb.value);
+            
+            try {
+                const data = await deleteRecords(tableName, recordIds);
+                if (data.success) {
+                    bootstrap.Modal.getInstance(bulkDeleteModal).hide();
+                    location.reload();
+                } else {
+                    showToast('Error deleting records: ' + data.error, 'error');
                 }
-                // If no rows left, show 'No data found'
-                const tbody = table.querySelector('tbody');
-                if (tbody && !tbody.querySelector('tr')) {
-                    const colCount = table.querySelectorAll('thead th').length;
-                    const tr = document.createElement('tr');
-                    const td = document.createElement('td');
-                    td.colSpan = colCount;
-                    td.className = 'text-center';
-                    td.textContent = 'No data found.';
-                    tr.appendChild(td);
-                    tbody.appendChild(tr);
-                }
-                // Deselect select-all and disable delete button
-                if (selectAll) selectAll.checked = false;
-                if (deleteBtn) deleteBtn.disabled = true;
-            } else if (data.error) {
-                showToast('Error: ' + data.error, 'error');
+            } catch (error) {
+                console.error('Error during bulk delete:', error);
+                showToast('Error deleting records. Please try again.', 'error');
             }
         });
     }
 
-    // Search Button click
-    const searchBtn = document.getElementById('search-grid-btn');
-    const searchModal = document.getElementById('searchModal');
-    const searchFieldsContainer = document.getElementById('dynamic-search-fields');
-    const resetSearchBtn = document.getElementById('reset-search-btn');
-    const executeSearchBtn = document.getElementById('execute-search-btn');
-
-    if (searchBtn && searchModal) {
+    // Search functionality
+    const searchBtn = document.getElementById('search-btn');
+    if (searchBtn) {
         searchBtn.addEventListener('click', function() {
-            fetch(`/api/fields/${tableName}/`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.fields) {
-                        window.renderSearchFields(data.fields, searchFieldsContainer, tableName);
-                        const modal = new bootstrap.Modal(searchModal);
-                        modal.show();
-                        
-                        // Initialize search pattern manager after modal is shown and fields are rendered
-                        if (tableName) {
-                            // Use setTimeout to ensure modal is fully rendered
-                            setTimeout(() => {
-                                if (!searchPatternManager) {
-                                    searchPatternManager = new SearchPatternManager(tableName);
-                                } else {
-                                    // Re-initialize if it already exists to refresh patterns
-                                    searchPatternManager.init();
-                                }
-                            }, 100);
-                        }
-                    }
-                });
+            const searchModal = new bootstrap.Modal(document.getElementById('searchModal'));
+            searchModal.show();
         });
     }
 
-    // Reset Search Button
-    if (resetSearchBtn) {
-        resetSearchBtn.addEventListener('click', function() {
-            const operatorSelects = searchModal.querySelectorAll('.operator-select');
-            const searchInputs = searchModal.querySelectorAll('.search-input');
-            const sortFieldSelects = searchModal.querySelectorAll('.sort-field-select');
-            const sortDirectionSelects = searchModal.querySelectorAll('.sort-direction-select');
-            
-            operatorSelects.forEach(select => select.value = '');
-            searchInputs.forEach(input => input.value = '');
-            sortFieldSelects.forEach(select => select.value = '');
-            sortDirectionSelects.forEach(select => select.value = '');
-            
-            // Reset search pattern form using the manager
-            if (searchPatternManager) {
-                searchPatternManager.resetForm();
-            }
-        });
-    }
-
-    // Execute Search Button
-    if (executeSearchBtn) {
-        executeSearchBtn.addEventListener('click', async function() {
-            const searchData = {};
-            const operatorSelects = searchModal.querySelectorAll('.operator-select');
-            const searchInputs = searchModal.querySelectorAll('.search-input');
-
-            operatorSelects.forEach((select, index) => {
-                const fieldName = select.getAttribute('data-field');
-                const operator = select.value;
-                let value = '';
-                const input = searchInputs[index];
-                if (input) {
-                    if (input.tagName === 'SELECT') {
-                        value = $(input).val();
-                    } else {
-                        value = input.value;
-                    }
-                }
-                if (operator && value) {
-                    searchData[fieldName] = { operator, value };
-                }
-            });
-
-            // --- Collect sort info ---
-            const sort = [];
-            const sortFields = searchModal.querySelectorAll('.sort-field-select');
-            const sortDirections = searchModal.querySelectorAll('.sort-direction-select');
-            for (let i = 0; i < sortFields.length; i++) {
-                const field = sortFields[i].value;
-                const direction = sortDirections[i].value;
-                if (field && direction) {
-                    sort.push({ field, direction });
-                }
-            }
-            // Add sort array to searchData
-            searchData.sort = sort;
-
-            const data = await searchRecords(tableName, searchData);
-            if (data && data.data) {
-                updateGrid(tableName, data.data, data.columns);
-                showToast('Search complete', 'success');
-                attachGridEventHandlers(tableName, fieldConfigs);
-                
-                // Show reset grid button after search
-                const resetGridBtn = document.getElementById('reset-grid-btn');
-                if (resetGridBtn) {
-                    resetGridBtn.style.display = 'inline-block';
-                }
-            } else {
-                showToast('No results found', 'warning');
-            }
-            // Close modal
-            const modalInstance = bootstrap.Modal.getInstance(searchModal);
-            if (modalInstance) modalInstance.hide();
-        });
-    }
-
-    // Reset Grid Button
+    // Reset Grid functionality
     const resetGridBtn = document.getElementById('reset-grid-btn');
     if (resetGridBtn) {
         resetGridBtn.addEventListener('click', async function() {
+            resetGridBtn.disabled = true;
+            resetGridBtn.innerHTML = 'Resetting...';
+            
             try {
-                // Show loading state
-                resetGridBtn.disabled = true;
-                resetGridBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...';
+                const response = await fetch(`/api/reset-grid/${tableName}/`);
+                const data = await response.json();
                 
-                // Fetch original data from the API
-                const data = await resetGrid(tableName);
-                if (data && data.data) {
+                if (data.success) {
                     // Update grid with original data
                     updateGrid(tableName, data.data, data.columns);
-                    // Hide reset button
-                    resetGridBtn.style.display = 'none';
-                    
-                    // Re-attach event handlers
-                    attachGridEventHandlers(tableName, fieldConfigs);
-                        
-                    showToast('Grid reset to original data', 'success');
+                    showToast('Grid reset successfully', 'success');
                 } else {
-                    throw new Error('Failed to fetch original data');
+                    showToast('Error resetting grid: ' + data.error, 'error');
                 }
             } catch (error) {
                 console.error('Error resetting grid:', error);
@@ -420,6 +381,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Initialize state restoration
+    initializeStateRestoration(tableName);
+    
     // Initialize default column states for first-time users after a delay
     // to ensure DOM is fully loaded and column managers are initialized
     setTimeout(() => {
@@ -430,7 +394,53 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         initializeDefaultColumnStates(tableName);
     }, 2000);
+
+    // Initialize state restoration after column managers are loaded
+    setTimeout(() => {
+        restoreGridStates(tableName);
+    }, 1000);
 }); 
+
+// Initialize state restoration for the grid
+function initializeStateRestoration(tableName) {
+    console.log('Initializing state restoration for table:', tableName);
+    
+    // Add restoration tasks to the queue
+    window.gridStateRestorer.addRestorationTask(async () => {
+        // Restore column order first
+        if (window.columnDragger) {
+            await window.columnDragger.restoreColumnOrder();
+        }
+    });
+
+    window.gridStateRestorer.addRestorationTask(async () => {
+        // Restore column widths
+        if (window.columnResizer) {
+            await window.columnResizer.restoreColumnWidths();
+        }
+    });
+
+    window.gridStateRestorer.addRestorationTask(async () => {
+        // Restore column visibility
+        if (window.columnVisibilityManager) {
+            await window.columnVisibilityManager.restoreVisibility();
+        }
+    });
+
+    window.gridStateRestorer.addRestorationTask(async () => {
+        // Restore column sorting
+        if (window.columnSorter) {
+            await window.columnSorter.restoreSortState();
+        }
+    });
+
+    // Execute restoration after a short delay to ensure all managers are initialized
+    setTimeout(() => {
+        if (window.gridStateRestorer.hasSavedStates()) {
+            window.gridStateRestorer.executeRestoration();
+        }
+    }, 100);
+}
 
 // Function to initialize default column states for first-time users
 async function initializeDefaultColumnStates(tableName) {
@@ -534,6 +544,77 @@ async function initializeDefaultColumnStates(tableName) {
         console.error('Error initializing default column states:', error);
     }
 }
+
+// Function to restore all grid states when page loads
+async function restoreGridStates(tableName) {
+    console.log('Restoring grid states for table:', tableName);
+    
+    try {
+        // Check if any saved states exist
+        const visibilityKey = `grid_visible_columns_${tableName}`;
+        const orderKey = `grid_column_order_${tableName}`;
+        const widthsKey = `grid_column_widths_${tableName}`;
+        const sortKey = `grid_column_sort_${tableName}`;
+
+        const hasSavedStates = localStorage.getItem(visibilityKey) || 
+                              localStorage.getItem(orderKey) || 
+                              localStorage.getItem(widthsKey) || 
+                              localStorage.getItem(sortKey);
+
+        if (!hasSavedStates) {
+            console.log('No saved states found, skipping restoration');
+            return;
+        }
+
+        console.log('Found saved states, restoring...');
+
+        // Wait for DOM to be ready
+        await waitForDOM();
+
+        // Restore states in order
+        if (window.columnDragger) {
+            await window.columnDragger.restoreColumnOrder();
+        }
+
+        if (window.columnResizer) {
+            await window.columnResizer.restoreColumnWidths();
+        }
+
+        if (window.columnVisibilityManager) {
+            await window.columnVisibilityManager.restoreVisibility();
+        }
+
+        if (window.columnSorter) {
+            await window.columnSorter.restoreSortState();
+        }
+
+        console.log('Grid state restoration completed');
+    } catch (error) {
+        console.error('Error restoring grid states:', error);
+    }
+}
+
+// Helper function to wait for DOM elements
+async function waitForDOM() {
+    const maxAttempts = 50; // 5 seconds max
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+        const table = document.querySelector('#dynamic-grid-table');
+        const headers = document.querySelectorAll('.resizable-column');
+        
+        if (table && headers.length > 0) {
+            console.log('DOM ready for state restoration');
+            return;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+
+    throw new Error('DOM not ready for state restoration');
+}
+
 // --- Helper to re-attach row and checkbox handlers after grid update ---
 function attachGridEventHandlers(tableName, fieldConfigs) {
     const table = document.querySelector('table.table');
@@ -578,6 +659,7 @@ function attachGridEventHandlers(tableName, fieldConfigs) {
         });
     }
 }
+
 // --- Initial attach on page load ---
 //attachGridEventHandlers();
 // After every updateGrid (e.g., after search, after delete), call attachGridEventHandlers();

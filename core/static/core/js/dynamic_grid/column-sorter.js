@@ -178,6 +178,27 @@ class ColumnSorter {
             }
         }, 100);
     }
+
+    // Method to apply sort state after grid updates
+    applySortStateAfterGridUpdate() {
+        setTimeout(() => {
+            this.applySavedSort();
+        }, 100);
+    }
+
+    // Method to restore sort state on page load
+    async restoreSortState() {
+        console.log('Restoring column sort state for table:', this.tableName);
+        
+        try {
+            // Apply saved sort state
+            this.applySavedSort();
+            
+            console.log('Column sort state restored successfully');
+        } catch (error) {
+            console.error('Error restoring column sort state:', error);
+        }
+    }
 }
 
 // Initialize column sorter when DOM is loaded
