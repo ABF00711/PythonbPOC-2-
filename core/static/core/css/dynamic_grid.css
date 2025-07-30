@@ -491,39 +491,7 @@ body.dragging * {
     font-style: italic;
 } 
 
-/* Job Autocomplete Styles */
-.job-autocomplete {
-    position: relative;
-}
-
-.job-suggestions-dropdown {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-radius: 0 0 4px 4px;
-}
-
-/* Ensure dropdown appears above search modal */
-#searchModal .job-suggestions-dropdown {
-    z-index: 9999 !important;
-    position: absolute !important;
-}
-
-.suggestion-item {
-    transition: background-color 0.2s ease;
-}
-
-.suggestion-item:hover {
-    background-color: #f8f9fa !important;
-}
-
-.suggestion-item strong {
-    color: #007bff;
-    font-weight: bold;
-}
-
-/* Ensure dropdown appears above other elements */
-.job-suggestions-dropdown {
-    z-index: 9999 !important;
-} 
+ 
 
 /* Job Autocomplete Dropdown Styles */
 .job-suggestions-dropdown {
@@ -575,4 +543,81 @@ body.dragging * {
 /* Ensure the job input field container has relative positioning */
 .mb-3:has(.job-autocomplete) {
     position: relative;
+}
+
+/* Top Navbar Styles */
+.top-navbar {
+    border-bottom: 1px solid #e9ecef;
+}
+
+.top-navbar .nav-tabs {
+    border-bottom: none;
+}
+
+.top-navbar .nav-link {
+    color: #6c757d;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.top-navbar .nav-link:hover {
+    color: #495057;
+    background-color: transparent;
+    border: none;
+}
+
+.top-navbar .nav-link.active {
+    color: #007bff;
+    background-color: transparent;
+    border-bottom: 2px solid #007bff;
+}
+
+.top-navbar .dropdown-menu {
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.top-navbar .dropdown-item {
+    padding: 0.5rem 1rem;
+    color: #6c757d;
+}
+
+.top-navbar .dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #495057;
+}
+
+/* Tab close button styling */
+.top-navbar .btn-close {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.top-navbar .btn-close:hover {
+    opacity: 1;
+    background-color: #dc3545;
+}
+
+.top-navbar .nav-item {
+    position: relative;
+}
+
+.top-navbar .nav-item:hover .btn-close {
+    opacity: 0.8;
+}
+
+/* Navbar Avatar Styles */
+.navbar-avatar {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.navbar-avatar:hover {
+    transform: scale(1.05);
 } 

@@ -1,25 +1,16 @@
-from django.contrib.auth import views as auth_views
-from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
-from .forms import CustomUserCreationForm, EmailAuthenticationForm, ProfileUpdateForm
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.db import connection
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from .models import SearchPattern
+from .forms import CustomUserCreationForm, EmailAuthenticationForm, ProfileUpdateForm
+from .models import SearchPattern, GridLayout
 import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.db import connection
-from .models import GridLayout
-from django.contrib.auth.decorators import login_required
 
 # Create your views here.
 
@@ -317,12 +308,12 @@ def api_update(request, table_name, record_id):
     """Update a record in table_name by ID. Only updates fields defined in search_config."""
     try:
         data = json.loads(request.body)
-        print(f"api_update: table={table_name}, record_id={record_id}, data={data}")
+    
     except json.JSONDecodeError as e:
-        print(f"api_update: JSON decode error: {e}")
+
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
-        print(f"api_update: Error parsing request body: {e}")
+
         return JsonResponse({'error': 'Invalid request data'}, status=400)
     
     cursor = connection.cursor()
@@ -351,7 +342,7 @@ def api_update(request, table_name, record_id):
         # Get field names from search_config
         cursor.execute("SELECT field_name FROM search_config WHERE table_name = %s ORDER BY id", [table_name])
         fields = [row[0] for row in cursor.fetchall()]
-        print(f"api_update: Available fields: {fields}")
+
         
         if not fields:
             return JsonResponse({'error': 'No fields found.'}, status=404)
@@ -366,15 +357,14 @@ def api_update(request, table_name, record_id):
                 set_clauses.append(f"{field} = %s")
                 values.append(data[field] if data[field] != '' else None)
         
-        print(f"api_update: Set clauses: {set_clauses}")
-        print(f"api_update: Values: {values}")
+
         
         if not set_clauses:
             return JsonResponse({'error': 'No fields to update.'}, status=400)
         
         values.append(record_id)
         sql = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE id = %s"
-        print(f"api_update: SQL: {sql}")
+
         
         cursor.execute(sql, values)
         
@@ -386,7 +376,7 @@ def api_update(request, table_name, record_id):
     except Exception as e:
         # Rollback transaction on error
         cursor.execute("ROLLBACK")
-        print(f"api_update: Database error: {e}")
+
         return JsonResponse({'error': str(e)}, status=500)
 
 @require_POST
@@ -408,7 +398,7 @@ def api_delete(request, table_name):
 @require_GET
 @login_required
 def api_gsearch(request, table_name, field_name):
-    print(f"api_gsearch: {table_name}, {field_name}")
+
     """Return autocomplete suggestions for GSearch operator as JSON."""
     q = request.GET.get('q', '').strip()
     cursor = connection.cursor()
@@ -513,7 +503,7 @@ def api_search(request, table_name):
     else:
         sql = f"SELECT {', '.join(select_fields)} FROM {table_name} {where_sql} {order_by_sql}"
     
-    print(f"sql: {sql}")
+
     cursor.execute(sql, params)
     
     # Handle field mapping correctly when we have aliases
