@@ -211,37 +211,78 @@ function renderTabs() {
     const tabs = getTabs();
     const activeTab = getActiveTab();
 
-    tabContainer.innerHTML = tabs.map(tab => `
-        <li class="nav-item" role="presentation">
-            <button class="nav-link ${tab.url === activeTab ? 'active' : ''}" 
-                    id="tab-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
-                    data-bs-toggle="tab" 
-                    data-bs-target="#content-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
-                    type="button" 
-                    role="tab" 
-                    aria-controls="content-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
-                    aria-selected="${tab.url === activeTab ? 'true' : 'false'}"
-                    onclick="setActiveTab('${tab.url}')">
-                ${tab.title}
-                ${tab.url !== '/' ? `<button type="button" class="btn-close ms-2" onclick="removeTab('${tab.url}', event)" style="font-size: 0.5rem;"></button>` : ''}
-            </button>
-        </li>
-    `).join('');
+    tabContainer.innerHTML = tabs.map(tab => {
+        // Check if this is the Home tab (either by URL or title)
+        const isHomeTab = tab.url === '/' || 
+                         tab.url === '/dynamic-grid/home/' || 
+                         tab.url === '/dynamic-grid/Home/' ||
+                         tab.title.toLowerCase() === 'home';
+        
+        return `
+            <li class="nav-item" role="presentation">
+                <button class="nav-link ${tab.url === activeTab ? 'active' : ''}" 
+                        id="tab-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
+                        data-bs-toggle="tab" 
+                        data-bs-target="#content-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
+                        type="button" 
+                        role="tab" 
+                        aria-controls="content-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
+                        aria-selected="${tab.url === activeTab ? 'true' : 'false'}"
+                        onclick="navigateToTab('${tab.url}')">
+                    ${tab.title}
+                    ${!isHomeTab ? `<button type="button" class="btn-close ms-2" onclick="removeTab('${tab.url}', event)" style="font-size: 0.5rem;"></button>` : ''}
+                </button>
+            </li>
+        `;
+    }).join('');
 }
 
 function addTab(title, url) {
     const tabs = getTabs();
-    if (!tabs.find(tab => tab.url === url)) {
+    
+    // Check if tab already exists (by URL or by title for special pages)
+    const existingTab = tabs.find(tab => {
+        if (url === '/' || url === '/about/' || url === '/contact/') {
+            // For special pages, check by URL
+            return tab.url === url;
+        } else {
+            // For dynamic grid pages, check by URL
+            return tab.url === url;
+        }
+    });
+    
+    if (!existingTab) {
         tabs.push({ title, url });
         setTabs(tabs);
         renderTabs();
     }
+    
+    // Always set as active tab (whether it was existing or newly added)
     setActiveTab(url);
+}
+
+function navigateToTab(url) {
+    setActiveTab(url);
+    window.location.href = url;
 }
 
 function removeTab(url, event) {
     event.stopPropagation();
+    
+    // Prevent removing the Home tab
     const tabs = getTabs();
+    const tabToRemove = tabs.find(tab => tab.url === url);
+    if (tabToRemove) {
+        const isHomeTab = tabToRemove.url === '/' || 
+                         tabToRemove.url === '/dynamic-grid/home/' || 
+                         tabToRemove.url === '/dynamic-grid/Home/' ||
+                         tabToRemove.title.toLowerCase() === 'home';
+        
+        if (isHomeTab) {
+            return; // Don't allow removing Home tab
+        }
+    }
+    
     const newTabs = tabs.filter(tab => tab.url !== url);
     
     if (newTabs.length === 0) {
@@ -265,7 +306,7 @@ function setupSidebarTabClicks() {
             const url = this.getAttribute('data-menu-url');
             const title = this.textContent.trim();
             
-            if (url && url !== '/') {
+            if (url) {
                 addTab(title, url);
             }
         });
