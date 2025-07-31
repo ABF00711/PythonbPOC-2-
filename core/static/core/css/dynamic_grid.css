@@ -4,8 +4,7 @@
 .dynamic-grid-wrapper {
     padding: 1rem;
     height: calc(100vh - 145px);
-    display: flex;
-    flex-direction: column;
+    /* Removed flex layout to allow sticky positioning to work */
     margin-top: 25px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
     border-radius: 1.5rem;
@@ -13,53 +12,82 @@
 }
 
 .grid-header {
-    position: sticky;
-    top: 0;
     background: linear-gradient(90deg, #f8f9fa 60%, #e9ecef 100%);
-    z-index: 1000;
     padding: 1rem 0;
     border-bottom: 2px solid #e9ecef;
     margin-bottom: 0;
-    flex-shrink: 0;
+    /* Removed flex-shrink: 0 since parent is no longer flex */
     border-top-left-radius: 1.5rem;
     border-top-right-radius: 1.5rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-.grid-container {
-    flex: 1;
-    overflow: auto;
+/* Table container - exactly like working example */
+.table-container {
+    max-height: 400px;
+    overflow-y: auto;
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
     background: white;
+    /* Removed flex: 1 since parent is no longer flex */
 }
 
-.sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 999;
-    background: #f8f9fa;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.sticky-header th {
-    background: #f8f9fa !important;
-    border-bottom: 2px solid #dee2e6;
-    border-top-left-radius: 1rem;
-    border-top-right-radius: 1rem;
-}
-
-/* Ensure table takes full width in scrollable container */
-.grid-container .table-responsive {
-    height: 100%;
-}
-
-.grid-container table {
+/* Table styling - exactly like working example */
+.table-container table {
+    border-collapse: collapse;
+    width: 100%;
     margin-bottom: 0;
 }
 
-.grid-container tbody {
-    background: white;
+.table-container th, 
+.table-container td {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+}
+
+/* Sticky header - removed to avoid conflicts with inline styles */
+
+
+
+/* Ensure resize handles and sort buttons work with sticky headers */
+.table-container thead th .resize-handle {
+    z-index: 2;
+}
+
+.table-container thead th .sort-buttons {
+    z-index: 2;
+}
+
+/* Ensure header content is properly positioned */
+.table-container thead th .header-content {
+    position: relative;
+    z-index: 2;
+}
+
+/* Ensure proper background for all sticky header elements */
+.table-container thead th,
+.table-container thead th .header-content,
+.table-container thead th .sort-buttons {
+    background-color: #f8f9fa;
+}
+
+/* Enhanced sticky header styling */
+.table-container thead th {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background-color 0.2s ease;
+}
+
+.table-container thead th:hover {
+    background-color: #e9ecef !important;
+}
+
+/* Ensure checkbox column stays aligned - removed to avoid conflicts with inline styles */
+
+/* Removed to avoid conflicts with inline styles */
+
+/* Add subtle border to sticky headers */
+.table-container thead th:not(:last-child) {
+    border-right: 1px solid #dee2e6;
 }
 
 /* Responsive adjustments */
@@ -111,7 +139,6 @@
 
 /* Column Resizing Styles */
 .resizable-column {
-    position: relative;
     user-select: none;
 }
 
@@ -238,7 +265,7 @@ body.dragging * {
     width: 100%;
     border-collapse: collapse;
     border-radius: 1.25rem;
-    overflow: hidden;
+    /* Removed overflow: hidden to allow sticky positioning to work */
 }
 
 #dynamic-grid-table th,
@@ -251,8 +278,9 @@ body.dragging * {
 #dynamic-grid-table th {
     background-color: #f8f9fa;
     font-weight: 600;
-    position: relative;
 }
+
+/* Override the above rule for sticky headers - removed to avoid conflicts with inline styles */
 
 #dynamic-grid-table tbody tr:hover {
     background-color: #f8f9fa;
@@ -626,6 +654,7 @@ body.dragging * {
     z-index: 1020;
 }
 
+/* Removed conflicting thead th rule to allow grid-specific sticky headers to work */
 /* Help Modal Styles */
 #helpModal .modal-body {
     max-height: 70vh;
@@ -650,6 +679,7 @@ body.dragging * {
 #helpModal .list-unstyled li:last-child {
     border-bottom: none;
 }
+
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

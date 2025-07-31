@@ -23,47 +23,45 @@
         </div>
     </div>
     
-    <!-- Scrollable Grid Container -->
-    <div class="grid-container">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover table-striped" id="dynamic-grid-table">
-                <thead class="table-light sticky-header">
-                    <tr class="align-middle">
-                        <th style="width:40px;" class="no-resize align-middle"><input type="checkbox" id="select-all-checkbox" title="Select all"></th>
-                        {% for col in columns %}
-                            <th class="resizable-column align-middle" data-column-name="{{ col.1 }}">
-                                <div class="header-content">
-                                    <span class="column-title">{{ col.0 }}</span>
-                                    <div class="sort-buttons">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-asc" 
-                                                data-column="{{ col.1 }}" title="Sort ascending">
-                                            <i class="bi bi-arrow-up"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-desc" 
-                                                data-column="{{ col.1 }}" title="Sort descending">
-                                            <i class="bi bi-arrow-down"></i>
-                                        </button>
-                                    </div>
+    <!-- Scrollable Grid Container - Simplified structure like working example -->
+    <div class="table-container" style="max-height: 550px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; background: white;">
+        <table class="table table-bordered table-hover table-striped" id="dynamic-grid-table">
+            <thead class="table-light">
+                <tr class="align-middle">
+                    <th style="width:40px; position: sticky; top: 0; background-color: #f8f9fa; z-index: 1;" class="no-resize align-middle"><input type="checkbox" id="select-all-checkbox" title="Select all"></th>
+                    {% for col in columns %}
+                        <th class="resizable-column align-middle" data-column-name="{{ col.1 }}" style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 1;">
+                            <div class="header-content">
+                                <span class="column-title">{{ col.0 }}</span>
+                                <div class="sort-buttons">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-asc" 
+                                            data-column="{{ col.1 }}" title="Sort ascending">
+                                        <i class="bi bi-arrow-up"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-desc" 
+                                            data-column="{{ col.1 }}" title="Sort descending">
+                                        <i class="bi bi-arrow-down"></i>
+                                    </button>
                                 </div>
-                                <div class="resize-handle"></div>
-                            </th>
+                            </div>
+                            <div class="resize-handle"></div>
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                    <tr data-record-id="{{ row|get_item:'id' }}" class="align-middle">
+                        <td class="align-middle"><input type="checkbox" class="row-select-checkbox"></td>
+                        {% for col in columns %}
+                            <td class="align-middle">{{ row|get_item:col.1|default_if_none:"" }}</td>
                         {% endfor %}
                     </tr>
-                </thead>
-                <tbody>
-                    {% for row in data %}
-                        <tr data-record-id="{{ row|get_item:'id' }}" class="align-middle">
-                            <td class="align-middle"><input type="checkbox" class="row-select-checkbox"></td>
-                            {% for col in columns %}
-                                <td class="align-middle">{{ row|get_item:col.1|default_if_none:"" }}</td>
-                            {% endfor %}
-                        </tr>
-                    {% empty %}
-                        <tr><td colspan="{{ columns|length|add:1 }}" class="text-center">No data found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                {% empty %}
+                    <tr><td colspan="{{ columns|length|add:1 }}" class="text-center">No data found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
