@@ -381,25 +381,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Check if this is first time or returning user
-    const isFirstTimeUser = !window.gridStateRestorer.hasSavedStates();
+    // Initialize state restoration
+    initializeStateRestoration(tableName);
     
-    if (isFirstTimeUser) {
-        // First time user: Initialize defaults, then apply them
-        console.log('First time user detected, initializing default states...');
-        setTimeout(() => {
-            initializeDefaultColumnStates(tableName);
-        }, 500);
-        
-        // Also try again after a longer delay as a fallback
-        setTimeout(() => {
-            initializeDefaultColumnStates(tableName);
-        }, 2000);
-    } else {
-        // Returning user: Just restore existing states
-        console.log('Returning user detected, restoring existing states...');
-        initializeStateRestoration(tableName);
-    }
+    // Initialize default column states for first-time users after a delay
+    // to ensure DOM is fully loaded and column managers are initialized
+    setTimeout(() => {
+        initializeDefaultColumnStates(tableName);
+    }, 500);
+    
+    // Also try again after a longer delay as a fallback
+    setTimeout(() => {
+        initializeDefaultColumnStates(tableName);
+    }, 2000);
+
+    // Initialize state restoration after column managers are loaded
+    setTimeout(() => {
+        restoreGridStates(tableName);
+    }, 1000);
 }); 
 
 // Initialize state restoration for the grid
@@ -538,11 +537,6 @@ async function initializeDefaultColumnStates(tableName) {
             }
             
             console.log('Default column states initialization completed');
-            
-            // After saving defaults, trigger state restoration to apply them
-            setTimeout(() => {
-                initializeStateRestoration(tableName);
-            }, 100);
         } else {
             console.log('Column states already exist, skipping initialization');
         }

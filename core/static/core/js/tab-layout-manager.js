@@ -208,39 +208,17 @@ class TabLayoutManager {
         
         // Extract tags and tabTexts from current tabs
         const tags = tabs.map(tab => {
-            // Extract the tag from the URL based on the URL format
-            if (tab.url === '/') {
-                return 'home';
-            } else if (tab.url === '/about/') {
-                return 'about';
-            } else if (tab.url === '/contact/') {
-                return 'contact';
-            } else if (tab.url.startsWith('/dynamic-grid/')) {
-                // Extract the tag from the URL (e.g., "/dynamic-grid/customers/" -> "customers")
-                const urlParts = tab.url.split('/');
-                return urlParts[urlParts.length - 2] || tab.url;
-            } else {
-                // Fallback: use the title as tag
-                return tab.title.toLowerCase();
-            }
+            // Extract the tag from the URL (e.g., "/dynamic-grid/customers/" -> "customers")
+            const urlParts = tab.url.split('/');
+            return urlParts[urlParts.length - 2] || tab.url;
         });
         
         const tabTexts = tabs.map(tab => tab.title);
         
         // Find the selected tag from the active tab
         const selectedTag = activeTab ? (() => {
-            if (activeTab === '/') {
-                return 'home';
-            } else if (activeTab === '/about/') {
-                return 'about';
-            } else if (activeTab === '/contact/') {
-                return 'contact';
-            } else if (activeTab.startsWith('/dynamic-grid/')) {
-                const urlParts = activeTab.split('/');
-                return urlParts[urlParts.length - 2] || activeTab;
-            } else {
-                return activeTab;
-            }
+            const urlParts = activeTab.split('/');
+            return urlParts[urlParts.length - 2] || activeTab;
         })() : (tags[0] || '');
         
         return {
@@ -277,39 +255,17 @@ class TabLayoutManager {
         
         // Add tabs from the layout data
         if (tabsData.tags && tabsData.tabTexts) {
-            const newTabs = tabsData.tags.map((tag, index) => {
-                const title = tabsData.tabTexts[index] || tag;
-                // Use correct URL format based on the tag/title
-                let url;
-                if (tag.toLowerCase() === 'home') {
-                    url = '/';
-                } else if (tag.toLowerCase() === 'about') {
-                    url = '/about/';
-                } else if (tag.toLowerCase() === 'contact') {
-                    url = '/contact/';
-                } else {
-                    url = `/dynamic-grid/${tag}/`;
-                }
-                
-                return { title, url };
-            });
+            const newTabs = tabsData.tags.map((tag, index) => ({
+                title: tabsData.tabTexts[index] || tag,
+                url: `/dynamic-grid/${tag}/`
+            }));
             
             setTabs(newTabs);
         }
         
         // Set active tab
         if (tabsData.selectedTag) {
-            let activeUrl;
-            if (tabsData.selectedTag.toLowerCase() === 'home') {
-                activeUrl = '/';
-            } else if (tabsData.selectedTag.toLowerCase() === 'about') {
-                activeUrl = '/about/';
-            } else if (tabsData.selectedTag.toLowerCase() === 'contact') {
-                activeUrl = '/contact/';
-            } else {
-                activeUrl = `/dynamic-grid/${tabsData.selectedTag}/`;
-            }
-            setActiveTab(activeUrl);
+            setActiveTab(`/dynamic-grid/${tabsData.selectedTag}/`);
         }
         
         // Re-render tabs
@@ -317,35 +273,14 @@ class TabLayoutManager {
         
         // Only navigate if it's a manual load or if we're not already on the correct page
         if (tabsData.selectedTag && (isManualLoad || this.shouldNavigateToTab(tabsData.selectedTag))) {
-            let navigateUrl;
-            if (tabsData.selectedTag.toLowerCase() === 'home') {
-                navigateUrl = '/';
-            } else if (tabsData.selectedTag.toLowerCase() === 'about') {
-                navigateUrl = '/about/';
-            } else if (tabsData.selectedTag.toLowerCase() === 'contact') {
-                navigateUrl = '/contact/';
-            } else {
-                navigateUrl = `/dynamic-grid/${tabsData.selectedTag}/`;
-            }
-            window.location.href = navigateUrl;
+            window.location.href = `/dynamic-grid/${tabsData.selectedTag}/`;
         }
     }
 
     shouldNavigateToTab(selectedTag) {
         // Check if we're already on the correct page to prevent unnecessary navigation
         const currentPath = window.location.pathname;
-        let expectedPath;
-        
-        if (selectedTag.toLowerCase() === 'home') {
-            expectedPath = '/';
-        } else if (selectedTag.toLowerCase() === 'about') {
-            expectedPath = '/about/';
-        } else if (selectedTag.toLowerCase() === 'contact') {
-            expectedPath = '/contact/';
-        } else {
-            expectedPath = `/dynamic-grid/${selectedTag}/`;
-        }
-        
+        const expectedPath = `/dynamic-grid/${selectedTag}/`;
         return currentPath !== expectedPath;
     }
 
