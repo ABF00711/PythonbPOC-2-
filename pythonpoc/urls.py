@@ -22,6 +22,7 @@ from core.views import api_fields, api_options, api_create, api_record, api_upda
 from core.views import api_delete, api_gsearch, api_search
 from core.views import api_search_patterns, api_save_search_pattern, api_delete_search_pattern, api_reset_grid
 from core.views import api_grid_layouts, api_save_grid_layout, api_load_grid_layout, api_delete_grid_layout, api_set_default_layout
+from core.views import api_tab_layouts, api_save_tab_layout, api_load_tab_layout, api_delete_tab_layout, api_set_default_tab_layout
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -43,17 +44,18 @@ urlpatterns = [
     path('api/gsearch/<str:table_name>/<str:field_name>/', api_gsearch, name='api_gsearch'),
     path('api/search/<str:table_name>/', api_search, name='api_search'),
     path('api/search-patterns/<str:table_name>/', api_search_patterns, name='api_search_patterns'),
-    path('api/save-search-pattern/<str:table_name>/', api_save_search_pattern, name='api_save_search_pattern'),
-    path('api/delete-search-pattern/<str:table_name>/', api_delete_search_pattern, name='api_delete_search_pattern'),
+    path('api/search-patterns/<str:table_name>/save/', api_save_search_pattern, name='api_save_search_pattern'),
+    path('api/search-patterns/<str:table_name>/<int:pattern_id>/delete/', api_delete_search_pattern, name='api_delete_search_pattern'),
     path('api/reset-grid/<str:table_name>/', api_reset_grid, name='api_reset_grid'),
-    # Grid Layout APIs
     path('api/layouts/<str:table_name>/', api_grid_layouts, name='api_grid_layouts'),
     path('api/layouts/<str:table_name>/save/', api_save_grid_layout, name='api_save_grid_layout'),
     path('api/layouts/<str:table_name>/<int:layout_id>/load/', api_load_grid_layout, name='api_load_grid_layout'),
     path('api/layouts/<str:table_name>/<int:layout_id>/delete/', api_delete_grid_layout, name='api_delete_grid_layout'),
     path('api/layouts/<str:table_name>/<int:layout_id>/set-default/', api_set_default_layout, name='api_set_default_layout'),
-    path('<str:form_name>/', dynamic_grid, name='dynamic_grid'),
-]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('api/tab-layouts/', api_tab_layouts, name='api_tab_layouts'),
+    path('api/tab-layouts/save/', api_save_tab_layout, name='api_save_tab_layout'),
+    path('api/tab-layouts/<int:layout_id>/load/', api_load_tab_layout, name='api_load_tab_layout'),
+    path('api/tab-layouts/<int:layout_id>/delete/', api_delete_tab_layout, name='api_delete_tab_layout'),
+    path('api/tab-layouts/<int:layout_id>/set-default/', api_set_default_tab_layout, name='api_set_default_tab_layout'),
+    path('dynamic-grid/<str:form_name>/', dynamic_grid, name='dynamic_grid'),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

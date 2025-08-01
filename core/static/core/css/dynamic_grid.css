@@ -1,5 +1,84 @@
 /* dynamic_grid.css */
 
+/* Scrollable Grid Layout */
+.dynamic-grid-wrapper {
+    padding: 1rem;
+    height: calc(100vh - 145px);
+    display: flex;
+    flex-direction: column;
+    margin-top: 25px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+    border-radius: 1.5rem;
+    background: #fff;
+}
+
+.grid-header {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(90deg, #f8f9fa 60%, #e9ecef 100%);
+    z-index: 1000;
+    padding: 1rem 0;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 0;
+    flex-shrink: 0;
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.grid-container {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: white;
+}
+
+.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sticky-header th {
+    background: #f8f9fa !important;
+    border-bottom: 2px solid #dee2e6;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+}
+
+/* Ensure table takes full width in scrollable container */
+.grid-container .table-responsive {
+    height: 100%;
+}
+
+.grid-container table {
+    margin-bottom: 0;
+}
+
+.grid-container tbody {
+    background: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dynamic-grid-wrapper {
+        height: calc(100vh - 150px);
+        padding: 0.5rem;
+    }
+    
+    .action-buttons {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .action-buttons .btn {
+        margin-left: 0 !important;
+    }
+}
+
 .text-danger {
     color: #dc3545 !important;
 }
@@ -158,6 +237,8 @@ body.dragging * {
 #dynamic-grid-table {
     width: 100%;
     border-collapse: collapse;
+    border-radius: 1.25rem;
+    overflow: hidden;
 }
 
 #dynamic-grid-table th,
@@ -235,6 +316,7 @@ body.dragging * {
 
 /* Responsive table */
 .table-responsive {
+    border-radius: 1.25rem;
     overflow-x: auto;
 }
 
@@ -244,7 +326,24 @@ body.dragging * {
 }
 
 .btn-group .btn {
-    margin-right: 5px;
+    min-width: 120px;
+    font-size: 1rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-group .btn:last-child {
+    margin-right: 0;
+}
+
+.btn:focus, .btn:active, .sort-btn:focus, .sort-btn:active {
+    outline: 2px solid #007bff !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
 }
 
 /* Modal styles */
@@ -402,6 +501,12 @@ body.dragging * {
     border-radius: 0 0 4px 4px;
 }
 
+/* Ensure dropdown appears above search modal */
+#searchModal .job-suggestions-dropdown {
+    z-index: 9999 !important;
+    position: absolute !important;
+}
+
 .suggestion-item {
     transition: background-color 0.2s ease;
 }
@@ -418,4 +523,145 @@ body.dragging * {
 /* Ensure dropdown appears above other elements */
 .job-suggestions-dropdown {
     z-index: 9999 !important;
+} 
+
+/* Job Autocomplete Dropdown Styles */
+.job-suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 4px 4px;
+}
+
+.job-suggestions-dropdown .suggestion-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.job-suggestions-dropdown .suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.job-suggestions-dropdown .suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.job-suggestions-dropdown .suggestion-item strong {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* Create new job option styling */
+.job-suggestions-dropdown .suggestion-item[style*="color: #007bff"] {
+    border-left: 3px solid #007bff;
+    background-color: #f8f9ff;
+}
+
+.job-suggestions-dropdown .suggestion-item[style*="color: #007bff"]:hover {
+    background-color: #e3f2fd;
+}
+
+/* Ensure the job input field container has relative positioning */
+.mb-3:has(.job-autocomplete) {
+    position: relative;
+}
+
+/* Ensure search modal job field containers have proper positioning */
+.row:has(.job-autocomplete) .col-md-6 {
+    position: relative;
+} 
+
+/* Top User Bar Styles */
+.top-user-bar {
+    height: 48px;
+    border-bottom: 1px solid #dee2e6;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.top-user-bar .btn-link {
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.top-user-bar .btn-link:hover {
+    color: #6366f1 !important;
+}
+
+.top-user-bar .navbar-avatar {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.top-user-bar .navbar-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Adjust main content padding to account for new top bar */
+.main-content {
+    padding-top: 96px !important; /* 48px for top bar + 48px for navbar */
+}
+
+/* Ensure proper z-index layering */
+.sidebar {
+    z-index: 1040;
+}
+
+.top-user-bar {
+    z-index: 1030;
+}
+
+.top-navbar {
+    z-index: 1020;
+}
+
+/* Help Modal Styles */
+#helpModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+#helpModal kbd {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    color: #495057;
+    font-size: 0.875em;
+    padding: 2px 6px;
+}
+
+#helpModal .list-unstyled li {
+    padding: 4px 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+#helpModal .list-unstyled li:last-child {
+    border-bottom: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .top-user-bar {
+        padding: 8px 12px;
+    }
+    
+    .top-user-bar .d-none.d-md-inline {
+        display: none !important;
+    }
+    
+    .main-content {
+        padding-top: 88px !important;
+    }
 } 

@@ -476,6 +476,27 @@ class ColumnDragger {
             this.loadSavedColumnOrder();
         }, 200);
     }
+
+    // Method to apply column order after grid updates
+    applyColumnOrderAfterGridUpdate() {
+        setTimeout(() => {
+            this.loadSavedColumnOrder();
+        }, 100);
+    }
+
+    // Method to restore column order on page load
+    async restoreColumnOrder() {
+        console.log('Restoring column order for table:', this.tableName);
+        
+        try {
+            // Load and apply saved column order
+            this.loadSavedColumnOrder();
+            
+            console.log('Column order restored successfully');
+        } catch (error) {
+            console.error('Error restoring column order:', error);
+        }
+    }
 }
 
 // Initialize column dragger when DOM is loaded

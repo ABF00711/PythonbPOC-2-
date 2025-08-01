@@ -11,12 +11,24 @@ export async function createRecord(tableName, formData) {
 }
 
 export async function updateRecord(tableName, recordId, formData) {
-    const res = await fetch(`/api/update/${tableName}/${recordId}/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-    });
-    return res.json();
+    try {
+        const res = await fetch(`/api/update/${tableName}/${recordId}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Update failed:', res.status, errorData);
+            return { error: errorData.error || `HTTP ${res.status}: ${res.statusText}` };
+        }
+        
+        return await res.json();
+    } catch (error) {
+        console.error('Network error during update:', error);
+        return { error: 'Network error. Please check your connection and try again.' };
+    }
 }
 
 export async function deleteRecords(tableName, ids) {

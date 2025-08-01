@@ -1,8 +1,10 @@
 {% extends 'base.html' %}
 {% block title %}Home - PythonPOC{% endblock %}
 {% block content %}
-<div class="text-center mt-5">
-    <h1 class="fw-bold">Welcome, {{ user.username }}!</h1>
-    <p class="lead">This is your dynamic, modern PythonPOC home page.</p>
+<div class="d-flex align-items-center justify-content-center" style="min-height: calc(100vh - 120px);">
+    <div class="text-center">
+        <h1 class="fw-bold display-4 mb-3">Welcome, {{ user.username }}!</h1>
+        <p class="lead text-muted fs-5">This is your dynamic, modern PythonPOC home page.</p>
+    </div>
 </div>
 {% endblock %} 

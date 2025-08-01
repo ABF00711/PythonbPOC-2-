@@ -1,10 +1,21 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4 fixed-top top-navbar" style="margin-left: 220px;">
-    <div class="container-fluid">
-        <ul class="nav nav-tabs" id="tabbedNavbar">
-            <!-- Tabs will be dynamically inserted here by JS -->
-        </ul>
-        <div class="d-flex align-items-center ms-auto">
-            <span class="me-2 fw-semibold d-none d-md-inline">{{ user.username }}</span>
+{% load static %}
+<!-- Top User Bar -->
+<div class="top-user-bar bg-white border-bottom py-2 px-3" style="position: fixed; top: 0; right: 0; left: 220px; z-index: 1030;">
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <!-- Version Number -->
+            <span class="text-muted small me-3">
+                <i class="bi bi-tag me-1"></i>v1.0.0
+            </span>
+        </div>
+        <div class="d-flex align-items-center">
+            <!-- Help Icon -->
+            <button type="button" class="btn btn-link btn-sm text-muted me-3" title="Help" data-bs-toggle="modal" data-bs-target="#helpModal">
+                <i class="bi bi-question-circle fs-5"></i>
+            </button>
+            <!-- Username -->
+            <span class="me-2 fw-semibold d-none d-md-inline text-muted">{{ user.username }}</span>
+            <!-- User Avatar -->
             <a href="#" class="d-flex align-items-center text-decoration-none" data-bs-toggle="modal" data-bs-target="#profileModal">
                 {% if user.avatar and user.avatar.name %}
                     <img src="{{ user.avatar.url }}" alt="Avatar" class="navbar-avatar" style="width:32px;height:32px;object-fit:cover;border-radius:50%;">
@@ -14,98 +25,259 @@
             </a>
         </div>
     </div>
+</div>
+
+<!-- Tab Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4 fixed-top top-navbar" style="margin-left: 220px; top: 48px;">
+    <div class="container-fluid">
+        <ul class="nav nav-tabs" id="tabbedNavbar">
+            <!-- Tabs will be dynamically inserted here by JS -->
+        </ul>
+        <div class="d-flex align-items-center ms-auto">
+            <!-- Tab Layouts Button -->
+            <button type="button" class="btn btn-outline-primary btn-sm me-2" id="tab-layouts-btn" title="Manage Tab Layouts">
+                <i class="bi bi-collection"></i> Tab Layouts
+            </button>
+        </div>
+    </div>
 </nav>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="helpModalLabel">
+                    <i class="bi bi-question-circle me-2"></i>Help & Documentation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-grid me-2"></i>Grid Features</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-arrow-left-right me-2"></i>Drag columns to reorder</li>
+                            <li><i class="bi bi-arrows-expand me-2"></i>Resize columns by dragging handles</li>
+                            <li><i class="bi bi-eye me-2"></i>Show/hide columns via Columns button</li>
+                            <li><i class="bi bi-sort-up me-2"></i>Sort data by clicking sort buttons</li>
+                            <li><i class="bi bi-layout-text-window me-2"></i>Save/load grid layouts</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-collection me-2"></i>Tab Management</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-plus me-2"></i>Add new tabs by clicking menu items</li>
+                            <li><i class="bi bi-x me-2"></i>Close tabs with the X button</li>
+                            <li><i class="bi bi-save me-2"></i>Save tab layouts for reuse</li>
+                            <li><i class="bi bi-arrow-clockwise me-2"></i>Load saved tab configurations</li>
+                        </ul>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-12">
+                        <h6><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <kbd>Ctrl + S</kbd> - Save current layout<br>
+                                <kbd>Ctrl + L</kbd> - Load saved layout<br>
+                                <kbd>Ctrl + R</kbd> - Reset grid
+                            </div>
+                            <div class="col-md-6">
+                                <kbd>Ctrl + F</kbd> - Open search<br>
+                                <kbd>Ctrl + N</kbd> - Add new record<br>
+                                <kbd>Delete</kbd> - Delete selected records
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab Layouts Modal -->
+<div class="modal fade" id="tabLayoutsModal" tabindex="-1" aria-labelledby="tabLayoutsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tabLayoutsModalLabel">
+                    <i class="bi bi-collection me-2"></i>Tab Layout Manager
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Save Current Tab Layout Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-save me-2"></i>Save Current Tab Layout
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <input type="text" class="form-control" id="tab-layout-name-input" 
+                                       placeholder="Enter layout name..." maxlength="100">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="tab-set-default-checkbox">
+                                    <label class="form-check-label" for="tab-set-default-checkbox">
+                                        Set as default
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary" id="save-tab-layout-btn">
+                                    <i class="bi bi-save me-2"></i>Save Layout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saved Tab Layouts Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-folder me-2"></i>Saved Tab Layouts
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="saved-tab-layouts-list">
+                            <!-- Saved layouts will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab Layout Overwrite Confirmation Modal -->
+<div class="modal fade" id="tabLayoutOverwriteModal" tabindex="-1" aria-labelledby="tabLayoutOverwriteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tabLayoutOverwriteModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Overwrite Layout
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>A tab layout with the name "<strong id="overwrite-layout-name"></strong>" already exists.</p>
+                <p>Do you want to overwrite it with the current tab configuration?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirm-tab-overwrite-btn">
+                    <i class="bi bi-check me-2"></i>Overwrite
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Tabbed navbar logic with localStorage persistence
-const tabKey = 'pythonpoc_tabs';
-const activeTabKey = 'pythonpoc_active_tab';
-
 function getTabs() {
-    return JSON.parse(localStorage.getItem(tabKey) || '[]');
+    const tabs = localStorage.getItem('navbarTabs');
+    return tabs ? JSON.parse(tabs) : [{ title: 'Home', url: '/' }];
 }
+
 function setTabs(tabs) {
-    localStorage.setItem(tabKey, JSON.stringify(tabs));
+    localStorage.setItem('navbarTabs', JSON.stringify(tabs));
 }
+
 function getActiveTab() {
-    return localStorage.getItem(activeTabKey) || '/';
+    return localStorage.getItem('activeTab') || '/';
 }
+
 function setActiveTab(url) {
-    localStorage.setItem(activeTabKey, url);
+    localStorage.setItem('activeTab', url);
 }
 
 function renderTabs() {
+    const tabContainer = document.getElementById('tabbedNavbar');
+    if (!tabContainer) return;
+
     const tabs = getTabs();
-    const active = getActiveTab();
-    const tabList = document.getElementById('tabbedNavbar');
-    tabList.innerHTML = '';
-    tabs.forEach(tab => {
-        const li = document.createElement('li');
-        li.className = 'nav-item';
-        const a = document.createElement('a');
-        a.className = 'nav-link' + (tab.url === active ? ' active' : '');
-        a.href = tab.url;
-        a.textContent = tab.title;
-        a.setAttribute('data-tab-url', tab.url);
-        a.onclick = function(e) {
-            e.preventDefault();
-            setActiveTab(tab.url);
-            window.location.href = tab.url;
-        };
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'btn-close ms-2';
-        closeBtn.style.fontSize = '0.8em';
-        closeBtn.onclick = function(e) {
-            e.stopPropagation();
-            removeTab(tab.url);
-        };
-        li.appendChild(a);
-        if (tab.url !== '/') li.appendChild(closeBtn); // Don't allow closing Home
-        tabList.appendChild(li);
-    });
+    const activeTab = getActiveTab();
+
+    tabContainer.innerHTML = tabs.map(tab => `
+        <li class="nav-item" role="presentation">
+            <button class="nav-link ${tab.url === activeTab ? 'active' : ''}" 
+                    id="tab-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#content-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
+                    type="button" 
+                    role="tab" 
+                    aria-controls="content-${tab.url.replace(/[^a-zA-Z0-9]/g, '-')}" 
+                    aria-selected="${tab.url === activeTab ? 'true' : 'false'}"
+                    onclick="setActiveTab('${tab.url}')">
+                ${tab.title}
+                ${tab.url !== '/' ? `<button type="button" class="btn-close ms-2" onclick="removeTab('${tab.url}', event)" style="font-size: 0.5rem;"></button>` : ''}
+            </button>
+        </li>
+    `).join('');
 }
 
 function addTab(title, url) {
-    let tabs = getTabs();
-    if (!tabs.some(tab => tab.url === url)) {
-        tabs.push({title, url});
+    const tabs = getTabs();
+    if (!tabs.find(tab => tab.url === url)) {
+        tabs.push({ title, url });
         setTabs(tabs);
-    }
-    setActiveTab(url);
-    renderTabs();
-}
-function removeTab(url) {
-    let tabs = getTabs();
-    tabs = tabs.filter(tab => tab.url !== url);
-    setTabs(tabs);
-    // If the closed tab was active, switch to the last tab or Home
-    if (getActiveTab() === url) {
-        const newActive = tabs.length ? tabs[tabs.length-1].url : '/';
-        setActiveTab(newActive);
-        window.location.href = newActive;
-    } else {
         renderTabs();
     }
+    setActiveTab(url);
 }
 
-// Listen for sidebar clicks
+function removeTab(url, event) {
+    event.stopPropagation();
+    const tabs = getTabs();
+    const newTabs = tabs.filter(tab => tab.url !== url);
+    
+    if (newTabs.length === 0) {
+        newTabs.push({ title: 'Home', url: '/' });
+    }
+    
+    setTabs(newTabs);
+    
+    const activeTab = getActiveTab();
+    if (activeTab === url) {
+        setActiveTab(newTabs[0].url);
+    }
+    
+    renderTabs();
+    window.location.href = newTabs[0].url;
+}
+
 function setupSidebarTabClicks() {
     document.querySelectorAll('[data-menu-url]').forEach(link => {
         link.addEventListener('click', function(e) {
+            const url = this.getAttribute('data-menu-url');
             const title = this.textContent.trim();
-            const url = this.getAttribute('href');
-            addTab(title, url);
+            
+            if (url && url !== '/') {
+                addTab(title, url);
+            }
         });
     });
 }
 
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tabs if empty
-    if (!getTabs().length) {
-        setTabs([{title: 'Home', url: '/'}]);
-        setActiveTab('/');
-    }
     renderTabs();
     setupSidebarTabClicks();
 });
-</script> 
+</script>
+
+<!-- Load Tab Layout Manager -->
+<script type="module" src="{% static 'core/js/tab-layout-manager.js' %}"></script> 

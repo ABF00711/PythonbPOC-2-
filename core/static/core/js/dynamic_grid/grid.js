@@ -5,61 +5,64 @@ export function updateGrid(tableName, data, columns) {
     const table = document.querySelector('#dynamic-grid-table');
     if (!table) return;
 
-    // Update table headers
-    const thead = table.querySelector('thead tr');
-    thead.innerHTML = `
-        <th style="width:40px;" class="no-resize">
-            <input type="checkbox" id="select-all-checkbox" title="Select all">
-        </th>
-        ${columns.map(col => `
-            <th class="resizable-column" data-column-name="${col[1]}">
-                <div class="header-content">
-                    <span class="column-title">${col[0]}</span>
-                    <div class="sort-buttons">
-                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-asc" 
-                                data-column="${col[1]}" title="Sort ascending">
-                            <i class="bi bi-arrow-up"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn sort-desc" 
-                                data-column="${col[1]}" title="Sort descending">
-                            <i class="bi bi-arrow-down"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="resize-handle"></div>
-            </th>
-        `).join('')}
-    `;
-
-    // Update table body
+    // Update the table content
     const tbody = table.querySelector('tbody');
-    tbody.innerHTML = data.length > 0 ? 
-        data.map(row => `
-            <tr data-record-id="${row.id || ''}">
-                <td><input type="checkbox" class="row-select-checkbox"></td>
-                ${columns.map(col => `
-                    <td>${row[col[1]] || ''}</td>
-                `).join('')}
-            </tr>
-        `).join('') : 
-        `<tr><td colspan="${columns.length + 1}" class="text-center">No data found.</td></tr>`;
-
-    // Re-initialize column functionality
-    if (window.columnResizer) {
-        window.columnResizer.attachEventListeners();
-        window.columnResizer.loadSavedColumnWidths();
+    if (tbody) {
+        tbody.innerHTML = data.map(row => {
+            const cells = columns.map(col => {
+                const value = row[col[1]] || '';
+                return `<td class="align-middle">${value}</td>`;
+            }).join('');
+            return `<tr data-record-id="${row.id}">${cells}</tr>`;
+        }).join('');
     }
 
-    if (window.columnDragger) {
-        window.columnDragger.attachEventListeners();
-        // Column order is handled by columnVisibilityManager.applyVisibilityAfterGridUpdate()
+    // Update the header content
+    const thead = table.querySelector('thead');
+    if (thead) {
+        const headerRow = thead.querySelector('tr');
+        if (headerRow) {
+            headerRow.innerHTML = columns.map(col => {
+                return `
+                    <th class="resizable-column align-middle" data-column-name="${col[1]}">
+                        <div class="header-content d-flex align-items-center">
+                            <span class="flex-grow-1">${col[0]}</span>
+                            <div class="sort-buttons">
+                                <button type="button" class="btn btn-sm btn-outline-secondary sort-btn" data-sort="asc" data-column="${col[1]}">
+                                    <i class="bi bi-arrow-up"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary sort-btn" data-sort="desc" data-column="${col[1]}">
+                                    <i class="bi bi-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="resize-handle"></div>
+                    </th>
+                `;
+            }).join('');
+        }
     }
 
-    if (window.columnVisibilityManager) {
-        window.columnVisibilityManager.applyVisibilityAfterGridUpdate();
-    }
+    // Re-apply column states after grid update
+    setTimeout(() => {
+        // Re-apply column order
+        if (window.columnDragger) {
+            window.columnDragger.applyColumnOrderAfterGridUpdate();
+        }
 
-    if (window.columnSorter) {
-        window.columnSorter.applySortAfterGridUpdate();
-    }
+        // Re-apply column widths
+        if (window.columnResizer) {
+            window.columnResizer.applyColumnWidthsAfterGridUpdate();
+        }
+
+        // Re-apply column visibility
+        if (window.columnVisibilityManager) {
+            window.columnVisibilityManager.applyVisibilityAfterGridUpdate();
+        }
+
+        // Re-apply column sorting
+        if (window.columnSorter) {
+            window.columnSorter.applySortStateAfterGridUpdate();
+        }
+    }, 200);
 } 

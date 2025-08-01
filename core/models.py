@@ -79,3 +79,26 @@ class GridLayout(models.Model):
                 is_default=True
             ).exclude(id=self.id).update(is_default=False)
         super().save(*args, **kwargs)
+
+class TabInterface(models.Model):
+    username = models.CharField(max_length=100)
+    tabs_name = models.CharField(max_length=100)
+    tabs_data = models.JSONField()
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('username', 'tabs_name')
+
+    def __str__(self):
+        return f"{self.username} - {self.tabs_name}"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one default layout per user
+        if self.is_default:
+            TabInterface.objects.filter(
+                username=self.username,
+                is_default=True
+            ).exclude(id=self.id).update(is_default=False)
+        super().save(*args, **kwargs)

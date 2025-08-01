@@ -1,7 +1,12 @@
+{% load static %}
+{% load url_filters %}
 <div class="d-flex">
     <nav class="sidebar bg-light border-end p-3" style="min-width: 220px; height: 100vh; position: fixed; top: 0; left: 0; z-index: 1040;">
         <div class="mb-4 text-center">
-            <a class="navbar-brand fw-bold" href="/">PythonPOC</a>
+            <a class="navbar-brand fw-bold d-flex align-items-center justify-content-center" href="/">
+                <img src="{% static 'core/img/python-logo.png' %}" alt="Python Logo" width="40" height="40" class="me-2" style="border-radius:8px;box-shadow:0 2px 8px rgba(48,105,152,0.08);background:#fff;">
+                <span class="fw-bold fs-4" style="letter-spacing: 1px;">PythonPOC</span>
+            </a>
         </div>
         <ul class="nav flex-column">
             <li class="nav-item mb-2">
@@ -23,7 +28,7 @@
                 {% if item.children %}
                     {% with is_active_child=False %}
                         {% for child in item.children %}
-                            {% if request.path == child.url %}{% with is_active_child=True %}{% endwith %}{% endif %}
+                            {% if request.path == child.url|to_dynamic_grid_url %}{% with is_active_child=True %}{% endwith %}{% endif %}
                         {% endfor %}
                         <li class="nav-item mb-2">
                             <a class="nav-link d-flex align-items-center" data-bs-toggle="collapse" href="#submenu-{{ item.menu.id }}" role="button" aria-expanded="{{ is_active_child|yesno:'true,false' }}" aria-controls="submenu-{{ item.menu.id }}">
@@ -33,7 +38,7 @@
                             <ul class="nav flex-column collapse ms-3{% if is_active_child %} show{% endif %}" id="submenu-{{ item.menu.id }}">
                                 {% for child in item.children %}
                                     <li class="nav-item mb-1">
-                                        <a class="nav-link d-flex align-items-center{% if request.path == child.url %} active{% endif %}" href="{{ child.url }}" data-menu-url="{{ child.url }}">
+                                        <a class="nav-link d-flex align-items-center{% if request.path == child.url|to_dynamic_grid_url %} active{% endif %}" href="{{ child.url|to_dynamic_grid_url }}" data-menu-url="{{ child.url|to_dynamic_grid_url }}">
                                             {% if child.icon %}<i class="bi {{ child.icon }} me-2"></i>{% endif %} {{ child.title }}
                                         </a>
                                     </li>
@@ -43,7 +48,7 @@
                     {% endwith %}
                 {% else %}
                     <li class="nav-item mb-2">
-                        <a class="nav-link d-flex align-items-center{% if request.path == item.menu.url %} active{% endif %}" href="{{ item.menu.url }}" data-menu-url="{{ item.menu.url }}">
+                        <a class="nav-link d-flex align-items-center{% if request.path == item.menu.url|to_dynamic_grid_url %} active{% endif %}" href="{{ item.menu.url|to_dynamic_grid_url }}" data-menu-url="{{ item.menu.url|to_dynamic_grid_url }}">
                             {% if item.menu.icon %}<i class="bi {{ item.menu.icon }} me-2"></i>{% endif %} {{ item.menu.title }}
                         </a>
                     </li>
@@ -51,9 +56,8 @@
             {% endfor %}
         </ul>
     </nav>
-    <div class="flex-grow-1" style="margin-left: 220px;">
+    <div class="flex-grow-1">
         {% include 'top_nav_tabs.html' %}
     </div>
 </div>
-{% load static %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -138,6 +138,27 @@ class ColumnResizer {
         const storageKey = `grid_column_widths_${this.tableName}`;
         localStorage.removeItem(storageKey);
     }
+
+    // Method to apply column widths after grid updates
+    applyColumnWidthsAfterGridUpdate() {
+        setTimeout(() => {
+            this.loadSavedColumnWidths();
+        }, 100);
+    }
+
+    // Method to restore column widths on page load
+    async restoreColumnWidths() {
+        console.log('Restoring column widths for table:', this.tableName);
+        
+        try {
+            // Load and apply saved column widths
+            this.loadSavedColumnWidths();
+            
+            console.log('Column widths restored successfully');
+        } catch (error) {
+            console.error('Error restoring column widths:', error);
+        }
+    }
 }
 
 // Initialize column resizer when DOM is loaded
